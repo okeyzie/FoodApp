@@ -436,33 +436,9 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
         <div className="lg:col-span-7 space-y-8 text-left py-2">
           {/* Brand Badge & Hero Title */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 border border-emerald-100 rounded-full text-xs font-black text-emerald-800">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                <span>🇳🇬 Lagos No. 1 Fine Dining App</span>
-              </div>
-              
-              <button
-                type="button"
-                onClick={() => {
-                  const target = document.getElementById('auth-form-container');
-                  if (target) {
-                    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    target.classList.add('ring-8', 'ring-emerald-700/15');
-                    setTimeout(() => target.classList.remove('ring-8', 'ring-emerald-700/15'), 2000);
-                    setTimeout(() => {
-                      const emailInput = document.getElementById('customer-email-input');
-                      if (emailInput) {
-                        emailInput.focus();
-                      }
-                    }, 500);
-                  }
-                }}
-                className="inline-flex items-center gap-1.5 px-4.5 py-2 bg-emerald-800 hover:bg-emerald-900 active:bg-emerald-950 text-white rounded-full text-xs font-black shadow-md hover:shadow-lg transition-all cursor-pointer hover:scale-[1.03] active:scale-95"
-              >
-                <span>Login / Sign Up</span>
-                <span className="text-xs">🔑</span>
-              </button>
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 border border-emerald-100 rounded-full text-xs font-black text-emerald-800">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+              <span>🇳🇬 Lagos No. 1 Fine Dining App</span>
             </div>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-emerald-950 leading-tight">
               Savor Lagos' Finest <br className="hidden sm:inline" />
