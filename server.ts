@@ -2,6 +2,7 @@ import express from "express";
 import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
+import { MongoClient } from "mongodb";
 import { AppState, Restaurant, MenuItem, Order, Rider, ChatMessage, Review, OrderStatus, CustomerAccount, AdminAccount } from "./src/types.js";
 
 const app = express();
@@ -376,6 +377,53 @@ const initialAdmins: AdminAccount[] = [
   }
 ];
 
+let mongoClient: any = null;
+let mongoDbConnected = false;
+
+async function initMongoDB() {
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    console.log("No MONGODB_URI environment variable set. Defaulting to local JSON storage (db_store.json).");
+    return;
+  }
+  try {
+    console.log(`Connecting to MongoDB using URI: ${uri.replace(/\/\/.*@/, "//***:***@")}`);
+    mongoClient = new MongoClient(uri);
+    await mongoClient.connect();
+    mongoDbConnected = true;
+    console.log("MongoDB connection established successfully!");
+    
+    const dbInstance = mongoClient.db();
+    const stateCollection = dbInstance.collection("app_state");
+    const doc = await stateCollection.findOne({ _id: "current_state" });
+    if (doc) {
+      console.log("Found existing AppState document in MongoDB. Synchronizing local memory state...");
+      const { _id, ...savedState } = doc;
+      db = {
+        restaurants: savedState.restaurants || initialRestaurants,
+        menuItems: savedState.menuItems || initialMenuItems,
+        riders: savedState.riders || initialRiders,
+        orders: savedState.orders || [],
+        messages: savedState.messages || [],
+        reviews: savedState.reviews || initialReviews,
+        customers: savedState.customers || initialCustomers,
+        admins: savedState.admins || initialAdmins
+      };
+      console.log("Memory state updated successfully from MongoDB!");
+    } else {
+      console.log("No existing state found in MongoDB. Initializing MongoDB collection with current baseline data...");
+      await stateCollection.updateOne(
+        { _id: "current_state" },
+        { $set: JSON.parse(JSON.stringify(db)) },
+        { upsert: true }
+      );
+      console.log("MongoDB collection seeded successfully!");
+    }
+  } catch (err) {
+    console.error("Failed to connect or synchronize with MongoDB. Falling back to local JSON. Error:", err);
+  }
+}
+
 function loadDatabase(): AppState {
   if (fs.existsSync(DB_FILE)) {
     try {
@@ -419,9 +467,25 @@ function saveDatabase(state: AppState) {
   } catch (e) {
     console.error("Error writing database file", e);
   }
+
+  if (mongoDbConnected && mongoClient) {
+    try {
+      const dbInstance = mongoClient.db();
+      const stateCollection = dbInstance.collection("app_state");
+      stateCollection.updateOne(
+        { _id: "current_state" },
+        { $set: JSON.parse(JSON.stringify(state)) },
+        { upsert: true }
+      ).catch((err: any) => {
+        console.error("Failed to asynchronously save state update to MongoDB:", err);
+      });
+    } catch (mongoErr) {
+      console.error("Failed to enqueue state update to MongoDB:", mongoErr);
+    }
+  }
 }
 
-// Initialize db
+// Initialize db (synchronous file-system baseline)
 let db = loadDatabase();
 
 // Middleware
@@ -1190,6 +1254,9 @@ app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
 
 // Start server
 async function startServer() {
+  // Initialize MongoDB connection if MONGODB_URI is provided
+  await initMongoDB();
+
   // Vite integration
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({

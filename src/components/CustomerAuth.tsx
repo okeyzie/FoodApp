@@ -442,9 +442,8 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
             </div>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-emerald-950 leading-tight">
               Savor Lagos' Finest <br className="hidden sm:inline" />
-              <span className="text-emerald-800 relative inline-block">
+              <span className="text-emerald-800">
                 Culinary Delicacies
-                <span className="absolute left-0 bottom-1 w-full h-1 bg-emerald-300 rounded-full opacity-60" />
               </span>
             </h1>
             <p className="text-gray-600 text-sm md:text-base leading-relaxed max-w-xl font-semibold">
