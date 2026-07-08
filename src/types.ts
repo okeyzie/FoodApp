@@ -128,6 +128,7 @@ export interface CustomerAccount {
   address: string;
   avatar: string;
   balance: number; // For virtual wallet payment gateway support
+  walletCreated?: boolean; // Track if the customer has created/linked their wallet
   password?: string; // Optional password for email/password auth
   googleId?: string; // Optional google unique id for Google Auth
   isGoogleAuth?: boolean; // True if account was created/connected via Google OAuth

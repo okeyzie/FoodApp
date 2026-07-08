@@ -15,6 +15,9 @@ import {
   Heart,
   ChevronRight,
   Info,
+  Wallet,
+  ShieldCheck,
+  CheckCircle,
 } from 'lucide-react';
 import { Restaurant, MenuItem, Order, OrderItem, ChatMessage, PaymentMethod, PaymentProvider, CustomerAccount } from '../types';
 import LiveTrackingMap from './LiveTrackingMap';
@@ -82,10 +85,11 @@ export default function CustomerView({
   const [newCustEmail, setNewCustEmail] = useState('');
   const [newCustPhone, setNewCustPhone] = useState('');
   const [newCustAddress, setNewCustAddress] = useState('');
-  const [newCustBalance, setNewCustBalance] = useState('20000'); // Default starting funds
+  const [newCustBalance, setNewCustBalance] = useState('0'); // Default starting funds is 0
 
   // Wallet funding state
   const [showFundModal, setShowFundModal] = useState(false);
+  const [showWalletCreationModal, setShowWalletCreationModal] = useState(false);
   const [fundAmount, setFundAmount] = useState('5000');
   
   // Chat state
@@ -245,6 +249,18 @@ export default function CustomerView({
     }, 1500);
   };
 
+  const handleActivateWallet = async () => {
+    if (!activeCustomer) return;
+    try {
+      await onUpdateCustomerAccount(activeCustomer.id, { walletCreated: true, balance: 0 });
+      setShowWalletCreationModal(false);
+      alert("🎉 Your secure FoodHub Digital Wallet has been successfully activated! Your starting balance is ₦0.00. You can now fund it using Card or Bank Transfer.");
+    } catch (e) {
+      console.error(e);
+      alert("Failed to activate wallet. Please try again.");
+    }
+  };
+
   const handleFundWalletSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeCustomer || !fundAmount) return;
@@ -299,20 +315,20 @@ export default function CustomerView({
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] text-[#1A1A1A] pb-20">
+    <div className="min-h-screen bg-[#FDFBF9] text-[#1A1A1A] pb-20">
       {/* CUSTOMER PORTAL HEADER BAR */}
-      <div className="bg-white border-b border-gray-200 py-3 px-4 shadow-xs">
+      <div className="bg-white border-b border-gray-100 py-3 px-4 shadow-xs">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
           {/* Active User Info & Wallet */}
           {activeCustomer ? (
             <div className="flex items-center gap-3 self-start sm:self-center">
-              <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-[#FF6B35]/20 bg-gray-100 shrink-0">
+              <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-emerald-600/20 bg-emerald-50 shrink-0">
                 <img src={activeCustomer.avatar} alt={activeCustomer.name} className="w-full h-full object-cover" />
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
                   <h4 className="text-sm font-extrabold text-gray-800">{activeCustomer.name}</h4>
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-orange-50 text-[#FF6B35] border border-orange-100 uppercase tracking-wider">
+                  <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-800 border border-emerald-100 uppercase tracking-wider">
                     Customer Account
                   </span>
                 </div>
@@ -327,22 +343,32 @@ export default function CustomerView({
           <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto justify-end">
             {/* Wallet Balance widget */}
             {activeCustomer && (
-              <div className="bg-emerald-50 border border-emerald-100 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                <div className="text-left">
-                  <p className="text-[9px] font-extrabold text-emerald-600 uppercase tracking-wider">Wallet Balance</p>
-                  <p className="text-xs font-black text-emerald-800">₦{activeCustomer.balance.toLocaleString()}</p>
+              activeCustomer.walletCreated ? (
+                <div className="bg-emerald-50 border border-emerald-100 px-3.5 py-1.5 rounded-xl flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <div className="text-left">
+                    <p className="text-[9px] font-extrabold text-emerald-600 uppercase tracking-wider font-mono">Wallet Balance</p>
+                    <p className="text-xs font-black text-emerald-800">₦{activeCustomer.balance.toLocaleString()}</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setFundAmount('5000');
+                      setShowFundModal(true);
+                    }}
+                    className="ml-2 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded-lg transition-all cursor-pointer shadow-xs"
+                  >
+                    + Fund
+                  </button>
                 </div>
+              ) : (
                 <button
-                  onClick={() => {
-                    setFundAmount('5000');
-                    setShowFundModal(true);
-                  }}
-                  className="ml-2 px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold rounded-lg transition-all cursor-pointer shadow-xs"
+                  onClick={() => setShowWalletCreationModal(true)}
+                  className="bg-gradient-to-r from-amber-500 to-emerald-600 hover:from-amber-600 hover:to-emerald-700 text-white px-3.5 py-2 rounded-xl text-[11px] font-extrabold shadow-sm hover:scale-[1.02] transition-all flex items-center gap-1.5 cursor-pointer border border-amber-400/20"
                 >
-                  + Fund
+                  <Wallet className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Activate Secure Wallet 💳</span>
                 </button>
-              </div>
+              )
             )}
 
             {/* Sign Out Button */}
@@ -359,31 +385,31 @@ export default function CustomerView({
       </div>
       {/* Search & Promo Hero banner */}
       {!selectedRestaurant && !activeOrder && (
-        <div className="bg-[#FF6B35]/5 border-b border-gray-200/80 px-4 py-8">
+        <div className="bg-[#0F4C3A]/5 border-b border-emerald-950/5 px-4 py-8">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-6 items-center justify-between">
             <div className="max-w-xl text-center md:text-left">
-              <span className="bg-[#FF6B35]/10 text-[#FF6B35] text-xs font-semibold px-2.5 py-1 rounded-full border border-[#FF6B35]/20">
+              <span className="bg-emerald-50 text-emerald-800 text-xs font-extrabold px-3 py-1 rounded-full border border-emerald-100 uppercase tracking-wide">
                 ⭐ Promo Code: FOODHUB30
               </span>
-              <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mt-3 text-[#1A1A1A] leading-tight">
+              <h2 className="text-3xl md:text-4xl font-black tracking-tight mt-3 text-emerald-950 leading-tight">
                 Satisfy Your Cravings, <br />
-                <span className="text-[#FF6B35]">
+                <span className="text-emerald-800">
                   Delivered in 20 Mins!
                 </span>
               </h2>
-              <p className="text-gray-500 text-sm mt-2">
+              <p className="text-gray-500 text-sm mt-2 font-medium">
                 Order from Lagos' top rated kitchens with live order tracking and seamless cashless checkout.
               </p>
             </div>
             {/* Search Input Box */}
-            <div className="w-full max-w-md bg-white border border-gray-200 p-2 rounded-2xl flex items-center shadow-sm">
+            <div className="w-full max-w-md bg-white border border-gray-100 p-2 rounded-2xl flex items-center shadow-xs">
               <Search className="text-gray-400 w-5 h-5 ml-2" />
               <input
                 type="text"
                 placeholder="Search Burgers, Sushi, Jollof, Pizza..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-transparent px-3 py-2 text-sm text-[#1A1A1A] outline-none placeholder-gray-400"
+                className="w-full bg-transparent px-3 py-2 text-sm text-[#1A1A1A] outline-none placeholder-gray-400 font-semibold"
               />
             </div>
           </div>
@@ -397,13 +423,13 @@ export default function CustomerView({
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Col: Order Tracking Info */}
             <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
+              <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-xs">
                 <div className="flex justify-between items-start border-b border-gray-100 pb-4">
                   <div>
-                    <span className="text-xs font-semibold text-[#FF6B35] px-2.5 py-1 rounded-full bg-[#FF6B35]/10 border border-[#FF6B35]/20 uppercase tracking-wider">
+                    <span className="text-xs font-black text-emerald-800 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-100 uppercase tracking-wider">
                       Live Delivery Tracking
                     </span>
-                    <h3 className="text-lg font-bold text-gray-800 mt-2">
+                    <h3 className="text-lg font-extrabold text-gray-800 mt-2">
                       Order #{activeOrder.id}
                     </h3>
                     <p className="text-xs text-gray-500 mt-1">
@@ -411,8 +437,8 @@ export default function CustomerView({
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-gray-400">Estimated Delivery</p>
-                    <p className="text-2xl font-black text-[#FF6B35] mt-0.5">
+                    <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Estimated Delivery</p>
+                    <p className="text-2xl font-black text-emerald-800 mt-0.5">
                       {activeOrder.estimatedDeliveryTime || '25 Mins'}
                     </p>
                   </div>
@@ -423,7 +449,7 @@ export default function CustomerView({
                   <div className="relative flex justify-between items-center w-full">
                     <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-1 bg-gray-100 -z-0" />
                     <div
-                      className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-[#FF6B35] transition-all duration-1000 -z-0"
+                      className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-emerald-800 transition-all duration-1000 -z-0"
                       style={{
                         width: 
                           activeOrder.status === 'Order Received' ? '10%' :
@@ -452,9 +478,9 @@ export default function CustomerView({
                         <div key={idx} className="flex flex-col items-center z-10">
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs border-2 transition-all duration-300 ${
                             isCompleted 
-                              ? 'bg-[#FF6B35] border-[#FF6B35]/50 text-white scale-115' 
+                              ? 'bg-emerald-800 border-emerald-800/50 text-white scale-115' 
                               : 'bg-white border-gray-200 text-gray-400'
-                          } ${isCurrent ? 'ring-4 ring-[#FF6B35]/20 shadow-lg' : ''}`}>
+                          } ${isCurrent ? 'ring-4 ring-emerald-800/20 shadow-lg' : ''}`}>
                             {idx + 1}
                           </div>
                           <span className={`text-[10px] font-semibold mt-2 ${
@@ -707,10 +733,10 @@ export default function CustomerView({
                               <p className="text-xs text-gray-500 line-clamp-2 mt-0.5">{item.description}</p>
                             </div>
                             <div className="flex justify-between items-center mt-2.5">
-                              <span className="text-sm font-black text-[#FF6B35]">₦{item.price.toLocaleString()}</span>
+                              <span className="text-sm font-black text-emerald-800">₦{item.price.toLocaleString()}</span>
                               <button
                                 onClick={() => handleAddToCart(item, [])}
-                                className="px-3 py-1 bg-[#FF6B35] text-white text-xs font-black rounded-lg hover:bg-[#E55A2B] transition-all flex items-center gap-1 shadow-sm"
+                                className="px-3 py-1 bg-emerald-800 text-white text-xs font-black rounded-lg hover:bg-emerald-950 transition-all flex items-center gap-1 shadow-xs cursor-pointer"
                               >
                                 <Plus className="w-3.5 h-3.5 stroke-[3]" /> Add to Cart
                               </button>
@@ -970,24 +996,46 @@ export default function CustomerView({
                     
                     {/* Instant Wallet checkout choice */}
                     {activeCustomer && (
-                      <button
-                        onClick={handlePayWithWallet}
-                        disabled={isProcessingPayment}
-                        className="w-full py-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 hover:border-emerald-300 rounded-xl text-left px-4 transition-all flex items-center justify-between cursor-pointer"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg">🏦</span>
-                          <div>
-                            <span className="block text-[11px] font-black text-emerald-900 leading-tight">Instant FoodHub Wallet</span>
-                            <span className="block text-[9px] text-emerald-600 font-bold mt-0.5">Available: ₦{activeCustomer.balance.toLocaleString()}</span>
+                      activeCustomer.walletCreated ? (
+                        <button
+                          onClick={handlePayWithWallet}
+                          disabled={isProcessingPayment}
+                          className="w-full py-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 hover:border-emerald-300 rounded-xl text-left px-4 transition-all flex items-center justify-between cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">🏦</span>
+                            <div>
+                              <span className="block text-[11px] font-black text-emerald-900 leading-tight font-sans">Instant FoodHub Wallet</span>
+                              <span className="block text-[9px] text-emerald-600 font-bold mt-0.5">Available Balance: ₦{activeCustomer.balance.toLocaleString()}</span>
+                            </div>
                           </div>
+                          {isProcessingPayment ? (
+                            <div className="w-3.5 h-3.5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4 text-emerald-500" />
+                          )}
+                        </button>
+                      ) : (
+                        <div className="w-full py-3 bg-gray-50 border border-dashed border-gray-200 rounded-xl px-4 flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">🏦</span>
+                            <div>
+                              <span className="block text-[11px] font-bold text-gray-400 leading-tight font-sans">Instant FoodHub Wallet (Locked)</span>
+                              <span className="block text-[9px] text-gray-400 mt-0.5 font-semibold">Activate wallet account to pay with balance</span>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowPaymentModal(false);
+                              setShowWalletCreationModal(true);
+                            }}
+                            className="px-2.5 py-1 bg-amber-500 hover:bg-amber-600 text-white text-[10px] font-extrabold rounded-lg transition-all cursor-pointer shadow-xs"
+                          >
+                            Activate
+                          </button>
                         </div>
-                        {isProcessingPayment ? (
-                          <div className="w-3.5 h-3.5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <ChevronRight className="w-4 h-4 text-emerald-500" />
-                        )}
-                      </button>
+                      )
                     )}
 
                     <div className="border-t border-slate-100 my-2 pt-1" />
@@ -1234,6 +1282,82 @@ export default function CustomerView({
                 Complete Wallet Funding 🔒
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* SECURE WALLET CREATION / CONNECT MODAL */}
+      {showWalletCreationModal && activeCustomer && (
+        <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center z-[110] p-4 animate-fade-in">
+          <div className="w-full max-w-md bg-white rounded-3xl overflow-hidden shadow-2xl border border-slate-100 text-slate-800 flex flex-col transform transition-all">
+            {/* Header */}
+            <div className="p-6 bg-gradient-to-r from-[#0F4C3A] to-[#165c47] text-white flex flex-col relative">
+              <button 
+                onClick={() => setShowWalletCreationModal(false)} 
+                className="absolute top-4 right-4 text-white/80 hover:text-white text-sm font-bold bg-white/10 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer transition-colors"
+              >
+                ✕
+              </button>
+              <div className="p-2.5 bg-amber-500/10 text-amber-300 w-fit rounded-xl border border-amber-400/20 mb-3">
+                <Wallet className="w-6 h-6 stroke-[2]" />
+              </div>
+              <span className="text-[10px] font-black uppercase tracking-wider text-amber-300 font-mono">Instant Cashless Payments</span>
+              <h3 className="text-xl font-black mt-0.5 tracking-tight">Setup FoodHub Wallet</h3>
+              <p className="text-xs text-emerald-100/80 mt-1 font-semibold">Activate your high-security virtual ledger for gourmet ordering</p>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-6 space-y-5">
+              <div className="space-y-3">
+                <div className="flex items-start gap-3 bg-emerald-50/50 p-3.5 rounded-2xl border border-emerald-100/30">
+                  <CheckCircle className="w-4.5 h-4.5 text-emerald-700 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-xs font-bold text-emerald-950">Zero Payment Failure Rate</h4>
+                    <p className="text-[10px] text-emerald-800 mt-0.5">Settle bills instantly using pre-loaded virtual balances. Avoid card processing issues.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 bg-emerald-50/50 p-3.5 rounded-2xl border border-emerald-100/30">
+                  <CheckCircle className="w-4.5 h-4.5 text-emerald-700 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-xs font-bold text-emerald-950">Instant Refunds & Rewards</h4>
+                    <p className="text-[10px] text-emerald-800 mt-0.5">Refunds from canceled runs or rider settlements credit back instantly into your balance.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 bg-emerald-50/50 p-3.5 rounded-2xl border border-emerald-100/30">
+                  <CheckCircle className="w-4.5 h-4.5 text-emerald-700 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-xs font-bold text-emerald-950">Top-Up at Your Convenience</h4>
+                    <p className="text-[10px] text-emerald-800 mt-0.5">Easily fund your ledger via card simulations or manual Bank Transfers anytime.</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Security Badge */}
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 px-3.5 py-2.5 rounded-xl text-[10px] text-slate-500 font-semibold font-mono">
+                <ShieldCheck className="w-4 h-4 text-amber-500 shrink-0" />
+                <span>Protected by FoodHub Secure Settlement protocol. Starting balance: ₦0.00</span>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowWalletCreationModal(false)}
+                  className="w-full py-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 font-extrabold rounded-xl text-xs transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleActivateWallet}
+                  className="w-full py-3 bg-emerald-800 hover:bg-emerald-900 text-white font-extrabold rounded-xl text-xs transition-all shadow-md flex items-center justify-center gap-1 cursor-pointer border border-emerald-700/45 hover:scale-[1.01]"
+                >
+                  Activate Wallet 💳
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

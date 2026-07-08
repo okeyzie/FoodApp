@@ -324,10 +324,10 @@ export default function App() {
 
   if (loading || !state) {
     return (
-      <div className="min-h-screen bg-[#F8F9FA] flex flex-col items-center justify-center font-sans">
-        <div className="w-12 h-12 border-4 border-[#FF6B35] border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm font-semibold text-gray-800 mt-4">Connecting to FoodHub Express telemetry...</p>
-        <p className="text-xs text-gray-500 mt-1">Populating simulated databases</p>
+      <div className="min-h-screen bg-[#FDFBF7] flex flex-col items-center justify-center font-sans">
+        <div className="w-12 h-12 border-4 border-emerald-800 border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm font-black text-emerald-950 mt-4 tracking-tight">Connecting to FoodHub Express telemetry...</p>
+        <p className="text-xs text-emerald-700/60 mt-1 font-semibold uppercase tracking-wider">Populating simulated databases</p>
       </div>
     );
   }
@@ -343,7 +343,7 @@ export default function App() {
   const onlineRidersCount = state.riders.filter(r => r.status === 'online').length;
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] font-sans text-[#1A1A1A] selection:bg-[#FF6B35]/20 selection:text-[#FF6B35]">
+    <div className="min-h-screen bg-[#FDFBF9] font-sans text-[#1A1A1A] selection:bg-emerald-800/10 selection:text-emerald-800">
       {/* Floating Global Swappable Role Header */}
       <RoleSwitcher
         currentRole={role}

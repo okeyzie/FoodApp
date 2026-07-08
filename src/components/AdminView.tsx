@@ -137,14 +137,14 @@ export default function AdminView({
         )}
 
         {/* Admin Dashboard header */}
-        <div className="bg-white border border-gray-200 p-6 rounded-3xl mb-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
+        <div className="bg-white border border-gray-100 p-6 rounded-3xl mb-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xs">
           <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-gray-50 border border-gray-100 text-[#FF6B35] rounded-2xl">
+            <div className="p-2.5 bg-gray-50 border border-gray-100 text-emerald-800 rounded-2xl">
               <Lock className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-xl font-bold text-gray-800 flex items-center gap-1.5">
-                Central Operations Console <span className="text-[10px] bg-[#FF6B35]/10 border border-[#FF6B35]/20 text-[#FF6B35] font-bold px-2 py-0.5 rounded-full">HQ Root</span>
+                Central Operations Console <span className="text-[10px] bg-emerald-50 border border-emerald-100 text-emerald-800 font-extrabold px-2 py-0.5 rounded-full">HQ Root</span>
               </h2>
               <p className="text-xs text-gray-400 mt-0.5">Real-time telemetry and management controls for Lagos municipality</p>
             </div>
@@ -166,7 +166,7 @@ export default function AdminView({
                 onClick={() => setAdminTab(t.id)}
                 className={`px-3 py-1.5 font-bold rounded-lg transition-all cursor-pointer ${
                   adminTab === t.id
-                    ? 'bg-[#FF6B35] text-white shadow-sm'
+                    ? 'bg-emerald-800 text-white shadow-xs'
                     : 'text-gray-400 hover:text-gray-700'
                 }`}
               >
@@ -185,35 +185,35 @@ export default function AdminView({
               
               {/* Stat card deck */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-white border border-gray-200 p-5 rounded-2xl shadow-sm">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
-                    <TrendingUp className="w-3.5 h-3.5 text-[#FF6B35]" /> Platform Gross Volume
+                <div className="bg-white border border-gray-100 p-5 rounded-2xl shadow-xs">
+                  <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                    <TrendingUp className="w-3.5 h-3.5 text-emerald-800" /> Platform Gross Volume
                   </span>
                   <p className="text-2xl font-black text-amber-600 mt-2">₦{totalRevenue.toLocaleString()}</p>
                   <p className="text-[9px] text-gray-400 mt-1">Sum of all successfully settled meals</p>
                 </div>
 
-                <div className="bg-white border border-gray-200 p-5 rounded-2xl shadow-sm">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                <div className="bg-white border border-gray-100 p-5 rounded-2xl shadow-xs">
+                  <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-1">
                     <DollarSign className="w-3.5 h-3.5 text-emerald-500" /> Platform Commission ({commissionRate}%)
                   </span>
                   <p className="text-2xl font-black text-emerald-600 mt-2">₦{platformCommissions.toLocaleString()}</p>
                   <p className="text-[9px] text-gray-400 mt-1">Net platform earnings from operations</p>
                 </div>
 
-                <div className="bg-white border border-gray-200 p-5 rounded-2xl shadow-sm">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5 text-[#FF6B35]" /> Active Deliveries
+                <div className="bg-white border border-gray-100 p-5 rounded-2xl shadow-xs">
+                  <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                    <Clock className="w-3.5 h-3.5 text-emerald-800" /> Active Deliveries
                   </span>
                   <p className="text-2xl font-black text-gray-800 mt-2">{activeDeliveries.length}</p>
                   <p className="text-[9px] text-gray-400 mt-1">In transit, preparing, or ready</p>
                 </div>
 
-                <div className="bg-white border border-gray-200 p-5 rounded-2xl shadow-sm">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                <div className="bg-white border border-gray-100 p-5 rounded-2xl shadow-xs">
+                  <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-1">
                     <Users className="w-3.5 h-3.5 text-amber-500" /> Operational Users
                   </span>
-                  <p className="text-2xl font-black text-[#FF6B35] mt-2">{restaurants.length + riders.length + 5}</p>
+                  <p className="text-2xl font-black text-emerald-800 mt-2">{restaurants.length + riders.length + 5}</p>
                   <p className="text-[9px] text-gray-400 mt-1">Registered accounts, kitchens & riders</p>
                 </div>
               </div>
@@ -222,9 +222,9 @@ export default function AdminView({
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 
                 {/* Active kitchen registers */}
-                <div className="bg-white border border-gray-200 rounded-2xl p-5 md:col-span-2 space-y-4 shadow-sm">
+                <div className="bg-white border border-gray-100 rounded-2xl p-5 md:col-span-2 space-y-4 shadow-xs">
                   <h4 className="text-xs font-bold text-gray-800 border-b border-gray-100 pb-3 flex items-center gap-1">
-                    <Store className="w-4 h-4 text-[#FF6B35]" />
+                    <Store className="w-4 h-4 text-emerald-800" />
                     Kitchen Status Log
                   </h4>
 
@@ -250,9 +250,9 @@ export default function AdminView({
                 </div>
 
                 {/* Rider grid registers */}
-                <div className="bg-white border border-gray-200 rounded-2xl p-5 space-y-4 shadow-sm">
+                <div className="bg-white border border-gray-100 rounded-2xl p-5 space-y-4 shadow-xs">
                   <h4 className="text-xs font-bold text-gray-800 border-b border-gray-100 pb-3 flex items-center gap-1">
-                    <Bike className="w-4 h-4 text-[#FF6B35]" />
+                    <Bike className="w-4 h-4 text-emerald-800" />
                     Rider Status Log
                   </h4>
 

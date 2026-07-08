@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Lock, User, Phone, MapPin, Sparkles, ShieldCheck } from 'lucide-react';
+import { Mail, Lock, User, Phone, MapPin, Sparkles, ShieldCheck, Upload, Image, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { CustomerAccount } from '../types';
 
@@ -21,6 +21,53 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
   const [signUpPassword, setSignUpPassword] = useState('');
   const [signUpPhone, setSignUpPhone] = useState('');
   const [signUpAddress, setSignUpAddress] = useState('Plot 8, Admiralty Road, Lekki Phase 1, Lagos');
+  const [signUpAvatar, setSignUpAvatar] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        setError('Image file size must be less than 2MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSignUpAvatar(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        setError('Please drop a valid image file');
+        return;
+      }
+      if (file.size > 2 * 1024 * 1024) {
+        setError('Image file size must be less than 2MB');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSignUpAvatar(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -80,7 +127,8 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
           email: signUpEmail,
           password: signUpPassword,
           phone: signUpPhone,
-          address: signUpAddress
+          address: signUpAddress,
+          avatar: signUpAvatar
         }),
       });
 
@@ -223,12 +271,19 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
       "Plot 18, Awolowo Road, Ikoyi, Lagos"
     ];
     const randomAddress = addresses[Math.floor(Math.random() * addresses.length)];
+    const avatars = [
+      "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80",
+      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80",
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80"
+    ];
 
     setSignUpName(randomName);
     setSignUpEmail(randomEmail);
     setSignUpPassword('password123');
     setSignUpPhone(randomPhone);
     setSignUpAddress(randomAddress);
+    setSignUpAvatar(avatars[Math.floor(Math.random() * avatars.length)]);
   };
 
   const handleInstantSignUpAndLogin = async () => {
@@ -286,7 +341,8 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
         phone: "+234 803 999 8888",
         address: "22, Admiralty Way, Lekki Phase 1, Lagos",
         avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80",
-        balance: 20000,
+        balance: 0,
+        walletCreated: false,
         password: "password123",
         createdAt: new Date().toISOString()
       };
@@ -303,11 +359,11 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
     <div className="max-w-md mx-auto my-12 px-4">
       {/* Brand Header */}
       <div className="text-center mb-8">
-        <div className="inline-flex items-center gap-2 px-3 py-1 bg-orange-50 border border-orange-100 rounded-full text-xs font-bold text-[#FF6B35] mb-3">
-          <Sparkles className="w-3.5 h-3.5" />
+        <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 border border-emerald-100 rounded-full text-xs font-black text-emerald-800 mb-3">
+          <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
           <span>Secured Live Customer Hub</span>
         </div>
-        <h1 className="text-3xl font-black tracking-tight text-gray-900">FoodHub Lagos</h1>
+        <h1 className="text-3xl font-black tracking-tight text-emerald-950">FoodHub Lagos</h1>
         <p className="text-xs text-gray-500 font-semibold mt-1">Authenticate to access real, live gourmet delivery logistics</p>
       </div>
 
@@ -366,7 +422,7 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
                 value={signInEmail}
                 onChange={(e) => setSignInEmail(e.target.value)}
                 disabled={loading}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-xs outline-none focus:border-[#FF6B35]/40 text-gray-800"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-xs outline-none focus:border-emerald-600/40 text-gray-800"
               />
             </div>
 
@@ -382,20 +438,78 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
                 value={signInPassword}
                 onChange={(e) => setSignInPassword(e.target.value)}
                 disabled={loading}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-xs outline-none focus:border-[#FF6B35]/40 text-gray-800"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-xs outline-none focus:border-emerald-600/40 text-gray-800"
               />
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 bg-[#FF6B35] hover:bg-[#E55A2B] text-white font-extrabold rounded-xl text-xs transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70"
+              className="w-full py-3.5 bg-emerald-800 hover:bg-emerald-950 text-white font-extrabold rounded-xl text-xs transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70"
             >
               {loading ? 'Validating account credentials...' : 'Sign In with Email 🔓'}
             </button>
           </form>
         ) : (
           <form onSubmit={handleEmailSignUp} className="space-y-4">
+            {/* Custom Image Upload Area */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-500 flex items-center gap-1">
+                <Image className="w-3.5 h-3.5 text-gray-400" />
+                <span>Profile Picture / Avatar</span>
+              </label>
+
+              {signUpAvatar ? (
+                <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-2xl border border-slate-100">
+                  <div className="relative w-16 h-16 rounded-full overflow-hidden border-2 border-emerald-600/20 bg-emerald-50 shrink-0">
+                    <img src={signUpAvatar} alt="Profile Preview" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  </div>
+                  <div className="text-left flex-1">
+                    <p className="text-[11px] font-black text-gray-800 leading-tight">Image Uploaded Successfully</p>
+                    <p className="text-[9px] text-gray-400 font-semibold mt-0.5">Ready to use for registration</p>
+                    <button
+                      type="button"
+                      onClick={() => setSignUpAvatar(null)}
+                      className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-bold text-red-600 hover:text-red-700 transition-colors bg-red-50 hover:bg-red-100 px-2.5 py-1 rounded-lg border border-red-100 cursor-pointer"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      <span>Remove Image</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  id="avatar-drop-zone"
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => document.getElementById('avatar-file-upload')?.click()}
+                  className={`border-2 border-dashed rounded-2xl p-5 text-center cursor-pointer transition-all ${
+                    isDragging
+                      ? 'border-emerald-600 bg-emerald-50/50'
+                      : 'border-gray-200 bg-gray-50 hover:bg-gray-100/50 hover:border-gray-300'
+                  }`}
+                >
+                  <input
+                    type="file"
+                    id="avatar-file-upload"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                  <div className="flex flex-col items-center justify-center space-y-2">
+                    <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-100 text-emerald-800">
+                      <Upload className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-gray-700">Drag & drop your photo here</p>
+                      <p className="text-[10px] text-gray-400 font-semibold mt-0.5">or click to browse from device (max 2MB)</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-gray-500 flex items-center gap-1">
                 <User className="w-3.5 h-3.5 text-gray-400" />
@@ -408,7 +522,7 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
                 value={signUpName}
                 onChange={(e) => setSignUpName(e.target.value)}
                 disabled={loading}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-xs outline-none focus:border-[#FF6B35]/40 text-gray-800"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-xs outline-none focus:border-emerald-600/40 text-gray-800"
               />
             </div>
 
@@ -424,7 +538,7 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
                 value={signUpEmail}
                 onChange={(e) => setSignUpEmail(e.target.value)}
                 disabled={loading}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-xs outline-none focus:border-[#FF6B35]/40 text-gray-800"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-xs outline-none focus:border-emerald-600/40 text-gray-800"
               />
             </div>
 
@@ -440,7 +554,7 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
                 value={signUpPassword}
                 onChange={(e) => setSignUpPassword(e.target.value)}
                 disabled={loading}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-xs outline-none focus:border-[#FF6B35]/40 text-gray-800"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-xs outline-none focus:border-emerald-600/40 text-gray-800"
               />
             </div>
 
@@ -456,7 +570,7 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
                 value={signUpPhone}
                 onChange={(e) => setSignUpPhone(e.target.value)}
                 disabled={loading}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-xs outline-none focus:border-[#FF6B35]/40 text-gray-800"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-xs outline-none focus:border-emerald-600/40 text-gray-800"
               />
             </div>
 
@@ -465,7 +579,7 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
                 type="button"
                 onClick={handleAutofillSignUp}
                 disabled={loading}
-                className="py-2.5 px-3 bg-[#FF6B35]/5 hover:bg-[#FF6B35]/10 border border-[#FF6B35]/15 hover:border-[#FF6B35]/30 rounded-xl text-[10px] font-bold text-[#FF6B35] transition-all cursor-pointer flex items-center justify-center gap-1"
+                className="py-2.5 px-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/50 rounded-xl text-[10px] font-bold text-emerald-800 transition-all cursor-pointer flex items-center justify-center gap-1"
               >
                 <span>⚡ Autofill Random Profile</span>
               </button>
@@ -480,16 +594,16 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
             </div>
 
             <div className="bg-emerald-50 border border-emerald-100 p-3.5 rounded-2xl flex items-center gap-2 mt-2">
-              <span className="text-base">🎁</span>
+              <span className="text-base">💳</span>
               <p className="text-[10px] text-emerald-800 font-bold leading-tight">
-                Welcome Gift: Get free <strong>₦20,000 wallet credit</strong> immediately upon registration!
+                Secure Wallet: Activate your 1-click personal virtual wallet upon logging in to make seamless cashless payments!
               </p>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3.5 bg-[#FF6B35] hover:bg-[#E55A2B] text-white font-extrabold rounded-xl text-xs transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 mt-2"
+              className="w-full py-3.5 bg-emerald-800 hover:bg-emerald-950 text-white font-extrabold rounded-xl text-xs transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 mt-2"
             >
               {loading ? 'Creating your live account...' : 'Create Account & Login ✨'}
             </button>
@@ -536,13 +650,13 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
               type="button"
               key={cust.id}
               onClick={() => handleAutofillDemo(cust.email)}
-              className="w-full bg-white hover:bg-orange-50 border border-gray-200 hover:border-orange-200 rounded-xl px-3 py-2 text-left text-[10px] flex items-center justify-between transition-all cursor-pointer font-semibold text-gray-700"
+              className="w-full bg-white hover:bg-emerald-50 border border-gray-200 hover:border-emerald-200 rounded-xl px-3 py-2 text-left text-[10px] flex items-center justify-between transition-all cursor-pointer font-semibold text-gray-700"
             >
               <div>
                 <span className="block font-bold text-gray-800">{cust.name}</span>
                 <span className="block text-[9px] text-gray-400 mt-0.5">{cust.email}</span>
               </div>
-              <span className="text-[9px] font-black text-[#FF6B35] bg-orange-50 px-2 py-0.5 rounded border border-orange-100">Select</span>
+              <span className="text-[9px] font-black text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-100">Select</span>
             </button>
           ))}
         </div>

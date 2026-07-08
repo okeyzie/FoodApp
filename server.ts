@@ -701,7 +701,8 @@ app.post("/api/customers", (req, res) => {
     phone: req.body.phone || "+234 800 000 0000",
     address: req.body.address || "Lagos, Nigeria",
     avatar: req.body.avatar || `https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80`,
-    balance: req.body.balance !== undefined ? parseFloat(req.body.balance) : 10000,
+    balance: req.body.balance !== undefined ? parseFloat(req.body.balance) : 0,
+    walletCreated: req.body.walletCreated !== undefined ? !!req.body.walletCreated : false,
     createdAt: new Date().toISOString()
   };
   db.customers.push(newCustomer);
@@ -717,6 +718,7 @@ app.put("/api/customers/:id", (req, res) => {
     if (req.body.phone !== undefined) customer.phone = req.body.phone;
     if (req.body.address !== undefined) customer.address = req.body.address;
     if (req.body.balance !== undefined) customer.balance = parseFloat(req.body.balance);
+    if (req.body.walletCreated !== undefined) customer.walletCreated = !!req.body.walletCreated;
     saveDatabase(db);
     res.json(customer);
   } else {
@@ -811,7 +813,7 @@ app.post("/api/orders/:id/rate", (req, res) => {
 
 // 1. Email and Password Registration
 app.post("/api/auth/register", (req, res) => {
-  const { email, password, name, phone, address } = req.body;
+  const { email, password, name, phone, address, avatar } = req.body;
   if (!email || !password || !name || !phone || !address) {
     return res.status(400).json({ error: "All registration fields (email, password, name, phone, address) are required." });
   }
@@ -827,8 +829,9 @@ app.post("/api/auth/register", (req, res) => {
     email: trimmedEmail,
     phone,
     address,
-    avatar: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80`,
-    balance: 20000, // starting balance ₦20,000 as a welcome gift for ordering
+    avatar: avatar || `https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80`,
+    balance: 0, // starting balance is 0 as requested
+    walletCreated: false, // Must explicitly create/activate wallet account
     password, // stored securely in db_store.json
     createdAt: new Date().toISOString()
   };
