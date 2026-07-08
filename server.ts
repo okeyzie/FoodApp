@@ -437,6 +437,9 @@ function loadDatabase(): AppState {
           if (!c.password && !c.isGoogleAuth) {
             c.password = "password123";
           }
+          if (c.verified === undefined) {
+            c.verified = true;
+          }
         });
       }
       if (!loaded.admins || !Array.isArray(loaded.admins)) {
@@ -482,6 +485,86 @@ function saveDatabase(state: AppState) {
     } catch (mongoErr) {
       console.error("Failed to enqueue state update to MongoDB:", mongoErr);
     }
+  }
+}
+
+// Send real-time OTP notification using Brevo Transactional Email API
+async function sendBrevoEmail(toEmail: string, toName: string, otpCode: string): Promise<boolean> {
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) {
+    console.warn("BREVO_API_KEY is not defined in the environment variables. Email was not sent. Standard local demo/simulation mode remains active.");
+    return false;
+  }
+
+  const senderEmail = process.env.BREVO_SENDER_EMAIL || "no-reply@foodhub.com";
+  const senderName = process.env.BREVO_SENDER_NAME || "FoodHub App";
+
+  try {
+    const payload = {
+      sender: {
+        name: senderName,
+        email: senderEmail
+      },
+      to: [
+        {
+          email: toEmail,
+          name: toName
+        }
+      ],
+      subject: `Your FoodHub Verification Code: ${otpCode}`,
+      htmlContent: `
+        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <span style="font-size: 32px;">🇳🇬</span>
+            <h1 style="color: #065f46; font-size: 24px; font-weight: 800; margin-top: 8px; margin-bottom: 4px; letter-spacing: -0.5px;">FoodHub App</h1>
+            <p style="color: #047857; font-size: 12px; font-weight: bold; margin: 0; text-transform: uppercase; tracking-wider: 0.1em;">Lagos No. 1 Fine Dining App</p>
+          </div>
+          
+          <hr style="border: 0; border-top: 1px solid #f1f5f9; margin-bottom: 24px;" />
+          
+          <h2 style="color: #1e293b; font-size: 18px; font-weight: 700; margin-bottom: 12px;">Hello ${toName},</h2>
+          <p style="color: #475569; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
+            Thank you for registering on FoodHub! To complete your registration and secure your Lagos culinary experience, please verify your email using the following 4-digit code:
+          </p>
+          
+          <div style="background-color: #f0fdf4; border: 1px solid #dcfce7; text-align: center; padding: 24px; margin: 24px 0; border-radius: 12px;">
+            <span style="font-family: 'Courier New', monospace; font-size: 36px; font-weight: 900; letter-spacing: 10px; color: #166534; display: inline-block;">${otpCode}</span>
+          </div>
+          
+          <p style="color: #64748b; font-size: 13px; line-height: 1.5; margin-bottom: 24px;">
+            Please enter this code on the verification screen to instantly access your live profile, fund your secure wallet, and browse delicious offerings.
+          </p>
+          
+          <hr style="border: 0; border-top: 1px solid #f1f5f9; margin-top: 24px; margin-bottom: 20px;" />
+          
+          <p style="color: #94a3b8; font-size: 11px; text-align: center; margin: 0; line-height: 1.4;">
+            This email was sent to ${toEmail}. If you did not sign up for FoodHub, you can safely ignore this email.
+          </p>
+        </div>
+      `
+    };
+
+    const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "accept": "application/json",
+        "api-key": apiKey,
+        "content-type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const errorResponse = await res.text();
+      console.error(`Brevo email sending failed for ${toEmail}: ${res.status} - ${errorResponse}`);
+      return false;
+    }
+
+    console.log(`Real OTP verification email successfully dispatched to ${toEmail} using Brevo!`);
+    return true;
+  } catch (error) {
+    console.error(`Error encountered while dispatching Brevo email to ${toEmail}:`, error);
+    return false;
   }
 }
 
@@ -885,7 +968,7 @@ app.post("/api/orders/:id/rate", (req, res) => {
 // ============================================================================
 
 // 1. Email and Password Registration
-app.post("/api/auth/register", (req, res) => {
+app.post("/api/auth/register", async (req, res) => {
   const { email, password, name, phone, address, avatar } = req.body;
   if (!email || !password || !name || !phone || !address) {
     return res.status(400).json({ error: "All registration fields (email, password, name, phone, address) are required." });
@@ -895,6 +978,9 @@ app.post("/api/auth/register", (req, res) => {
   if (existing) {
     return res.status(400).json({ error: "This email address is already registered." });
   }
+
+  // Generate a random 4-digit verification code
+  const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
   
   const newCustomer: CustomerAccount = {
     id: `customer-${Date.now()}`,
@@ -906,16 +992,25 @@ app.post("/api/auth/register", (req, res) => {
     balance: 0, // starting balance is 0 as requested
     walletCreated: false, // Must explicitly create/activate wallet account
     password, // stored securely in db_store.json
+    verified: false, // Must verify email first
+    otpCode,
     createdAt: new Date().toISOString()
   };
   
   db.customers.push(newCustomer);
   saveDatabase(db);
-  res.status(201).json(newCustomer);
+
+  // Send the real Brevo email
+  const emailSent = await sendBrevoEmail(newCustomer.email, newCustomer.name, otpCode);
+
+  res.status(201).json({
+    ...newCustomer,
+    emailSent
+  });
 });
 
 // 2. Email and Password Login
-app.post("/api/auth/login", (req, res) => {
+app.post("/api/auth/login", async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) {
     return res.status(400).json({ error: "Email and password are required." });
@@ -925,7 +1020,74 @@ app.post("/api/auth/login", (req, res) => {
   if (!customer) {
     return res.status(400).json({ error: "Invalid email or password." });
   }
+
+  // If the account is registered but not verified yet, block login and request verification
+  if (customer.verified === false) {
+    const otpCode = customer.otpCode || Math.floor(1000 + Math.random() * 9000).toString();
+    customer.otpCode = otpCode;
+    saveDatabase(db);
+
+    // Resend the real Brevo email
+    const emailSent = await sendBrevoEmail(customer.email, customer.name, otpCode);
+
+    return res.status(403).json({
+      error: "Verification required",
+      verificationRequired: true,
+      email: customer.email,
+      otpCode: otpCode, // Send as backup so frontend works with or without Brevo variables configured
+      emailSent
+    });
+  }
+
   res.json(customer);
+});
+
+// 3. Verify OTP
+app.post("/api/auth/verify-otp", (req, res) => {
+  const { email, otp } = req.body;
+  if (!email || !otp) {
+    return res.status(400).json({ error: "Email and verification code are required." });
+  }
+  const trimmedEmail = email.trim().toLowerCase();
+  const customer = db.customers.find(c => c.email.toLowerCase() === trimmedEmail);
+  if (!customer) {
+    return res.status(404).json({ error: "Account not found." });
+  }
+
+  if (customer.otpCode !== otp.toString().trim()) {
+    return res.status(400).json({ error: "Invalid verification code. Please check and try again." });
+  }
+
+  customer.verified = true;
+  customer.otpCode = undefined; // clear once verified
+  saveDatabase(db);
+  res.json({ message: "Email verified successfully!", customer });
+});
+
+// 4. Resend OTP
+app.post("/api/auth/resend-otp", async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: "Email is required." });
+  }
+  const trimmedEmail = email.trim().toLowerCase();
+  const customer = db.customers.find(c => c.email.toLowerCase() === trimmedEmail);
+  if (!customer) {
+    return res.status(404).json({ error: "Account not found." });
+  }
+
+  const otpCode = Math.floor(1000 + Math.random() * 9000).toString();
+  customer.otpCode = otpCode;
+  saveDatabase(db);
+
+  // Send the real Brevo email
+  const emailSent = await sendBrevoEmail(customer.email, customer.name, otpCode);
+
+  res.json({ 
+    message: "A new 4-digit verification code has been generated.", 
+    otpCode,
+    emailSent
+  });
 });
 
 // 2b. Admin Registration

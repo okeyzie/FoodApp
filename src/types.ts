@@ -132,6 +132,8 @@ export interface CustomerAccount {
   password?: string; // Optional password for email/password auth
   googleId?: string; // Optional google unique id for Google Auth
   isGoogleAuth?: boolean; // True if account was created/connected via Google OAuth
+  verified?: boolean; // True if email account is verified with OTP
+  otpCode?: string; // Current registration OTP verification code
   bankName?: string; // Virtual bank name
   bankAccountNumber?: string; // Unique virtual bank account number
   bankAccountName?: string; // Virtual bank account name

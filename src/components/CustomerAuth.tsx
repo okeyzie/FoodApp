@@ -26,6 +26,13 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
   const [signInEmail, setSignInEmail] = useState('');
   const [signInPassword, setSignInPassword] = useState('');
   
+  // OTP Verification states
+  const [showVerification, setShowVerification] = useState(false);
+  const [verificationEmail, setVerificationEmail] = useState('');
+  const [verificationOtp, setVerificationOtp] = useState('');
+  const [simulatedOtpCode, setSimulatedOtpCode] = useState('');
+  const [isRealEmailSent, setIsRealEmailSent] = useState(false);
+  
   // Sign Up states
   const [signUpName, setSignUpName] = useState('');
   const [signUpEmail, setSignUpEmail] = useState('');
@@ -106,6 +113,20 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
       }
 
       if (!res.ok) {
+        if (res.status === 403 && data.verificationRequired) {
+          // Account requires verification. Switch to OTP mode!
+          setVerificationEmail(data.email);
+          setSimulatedOtpCode(data.otpCode || '');
+          setIsRealEmailSent(data.emailSent || false);
+          setVerificationOtp('');
+          setShowVerification(true);
+          setError(null);
+          setSuccessMsg(data.emailSent 
+            ? 'Account registered but email is not verified yet. We have sent a 4-digit code to your email.'
+            : 'Account registered but email is not verified yet. We have generated a 4-digit code for you.'
+          );
+          return;
+        }
         throw new Error(data.error || 'Invalid credentials');
       }
       setSuccessMsg('Logged in successfully!');
@@ -153,12 +174,82 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
       if (!res.ok) {
         throw new Error(data.error || 'Registration failed');
       }
-      setSuccessMsg('Account registered successfully! Welcome to FoodHub.');
-      setTimeout(() => {
-        onLoginSuccess(data.id, data);
-      }, 1000);
+
+      // Instead of instant logging-in, show the OTP verification screen
+      setVerificationEmail(data.email);
+      setSimulatedOtpCode(data.otpCode || '');
+      setIsRealEmailSent(data.emailSent || false);
+      setVerificationOtp('');
+      setShowVerification(true);
+      setError(null);
+      setSuccessMsg(data.emailSent 
+        ? `Account registered successfully! A 4-digit verification code has been dispatched to your email address.`
+        : `Account registered successfully! A 4-digit verification code has been generated.`
+      );
     } catch (err: any) {
       setError(err.message || 'An error occurred during registration.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle OTP verification
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!verificationOtp) {
+      setError('Please enter the 4-digit verification code.');
+      return;
+    }
+
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: verificationEmail, otp: verificationOtp }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Verification failed');
+      }
+
+      setSuccessMsg('Email verified successfully! Logging you in...');
+      setTimeout(() => {
+        onLoginSuccess(data.customer.id, data.customer);
+      }, 1000);
+    } catch (err: any) {
+      setError(err.message || 'Verification failed.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle Resend OTP
+  const handleResendOtp = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/resend-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: verificationEmail }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to resend verification code.');
+      }
+
+      setSimulatedOtpCode(data.otpCode || '');
+      setIsRealEmailSent(data.emailSent || false);
+      setSuccessMsg(data.emailSent
+        ? `A new 4-digit verification code has been successfully dispatched to ${verificationEmail}.`
+        : `A new 4-digit verification code has been generated for ${verificationEmail}.`
+      );
+    } catch (err: any) {
+      setError(err.message || 'Failed to resend verification code.');
     } finally {
       setLoading(false);
     }
@@ -338,9 +429,21 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
         throw new Error(data.error || 'Registration failed');
       }
 
-      setSuccessMsg(`Welcome ${randomName}! Direct 1-Click login success.`);
+      // Automatically verify OTP for 1-Click signup!
+      const verifyRes = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: randomEmail, otp: data.otpCode }),
+      });
+      const verifyData = await verifyRes.json();
+      
+      if (!verifyRes.ok) {
+        throw new Error(verifyData.error || 'Instant verification failed');
+      }
+
+      setSuccessMsg(`Welcome ${randomName}! Direct 1-Click login and email verification success.`);
       setTimeout(() => {
-        onLoginSuccess(data.id, data);
+        onLoginSuccess(verifyData.customer.id, verifyData.customer);
       }, 1000);
     } catch (err: any) {
       // Fallback local registry entry if server is blocked
@@ -605,37 +708,45 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
           <div className="text-center mb-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 border border-emerald-100 rounded-full text-xs font-black text-emerald-800 mb-3">
               <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
-              <span>Secured Live Customer Hub</span>
+              <span>{showVerification ? "Secured Account Verification" : "Secured Live Customer Hub"}</span>
             </div>
-            <h2 className="text-2xl font-black tracking-tight text-emerald-950">Access Account</h2>
-            <p className="text-xs text-gray-400 font-semibold mt-1">Authenticate to access real, live gourmet delivery logistics</p>
+            <h2 className="text-2xl font-black tracking-tight text-emerald-950">
+              {showVerification ? "Verify Email" : "Access Account"}
+            </h2>
+            <p className="text-xs text-gray-400 font-semibold mt-1">
+              {showVerification 
+                ? "Enter the code generated for your email to continue" 
+                : "Authenticate to access real, live gourmet delivery logistics"}
+            </p>
           </div>
 
           {/* Tabs */}
-          <div className="bg-gray-100 p-1.5 rounded-2xl flex mb-6 border border-gray-200/50">
-            <button
-              onClick={() => { setActiveTab('signin'); setError(null); }}
-              type="button"
-              className={`flex-1 py-3 text-xs font-black rounded-xl transition-all cursor-pointer ${
-                activeTab === 'signin'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => { setActiveTab('signup'); setError(null); }}
-              type="button"
-              className={`flex-1 py-3 text-xs font-black rounded-xl transition-all cursor-pointer ${
-                activeTab === 'signup'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              Register Account
-            </button>
-          </div>
+          {!showVerification && (
+            <div className="bg-gray-100 p-1.5 rounded-2xl flex mb-6 border border-gray-200/50">
+              <button
+                onClick={() => { setActiveTab('signin'); setError(null); }}
+                type="button"
+                className={`flex-1 py-3 text-xs font-black rounded-xl transition-all cursor-pointer ${
+                  activeTab === 'signin'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                Sign In
+              </button>
+              <button
+                onClick={() => { setActiveTab('signup'); setError(null); }}
+                type="button"
+                className={`flex-1 py-3 text-xs font-black rounded-xl transition-all cursor-pointer ${
+                  activeTab === 'signup'
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                Register Account
+              </button>
+            </div>
+          )}
 
           {/* Feedback Messages */}
           {error && (
@@ -654,7 +765,92 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
 
           {/* Forms Container */}
           <div className="bg-white border border-gray-200/80 shadow-xs rounded-3xl p-6 sm:p-8 space-y-6">
-        {activeTab === 'signin' ? (
+        {showVerification ? (
+          <form onSubmit={handleVerifyOtp} className="space-y-5">
+            <div className="text-center space-y-2">
+              <div className="w-12 h-12 bg-emerald-50 text-emerald-800 rounded-full flex items-center justify-center mx-auto border border-emerald-100">
+                <ShieldCheck className="w-6 h-6 text-emerald-700" />
+              </div>
+              <h3 className="text-sm font-black text-emerald-950">Verify Email Address</h3>
+              <p className="text-[11px] text-gray-500 font-semibold max-w-xs mx-auto leading-relaxed">
+                We have generated a 4-digit verification code to secure your email address: <span className="text-emerald-900 font-bold">{verificationEmail}</span>.
+              </p>
+            </div>
+
+            {isRealEmailSent ? (
+              <div className="bg-emerald-50/80 border border-emerald-200/60 p-4 rounded-2xl text-center space-y-2">
+                <span className="text-xs text-emerald-800 font-extrabold flex items-center justify-center gap-1.5 uppercase font-mono tracking-wider">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                  📩 Real-Time Email Dispatched
+                </span>
+                <p className="text-[11px] text-gray-600 font-semibold leading-relaxed">
+                  We have successfully delivered your secure 4-digit verification code to <span className="text-emerald-950 font-bold">{verificationEmail}</span> via Brevo API. Please check your inbox and your spam folder.
+                </p>
+              </div>
+            ) : (
+              simulatedOtpCode && (
+                <div className="bg-amber-50/60 border border-amber-200/50 p-4 rounded-2xl text-center space-y-1.5">
+                  <span className="text-[10px] text-amber-800 font-extrabold uppercase font-mono tracking-wider block">🛠️ Developer Sandbox Fallback</span>
+                  <p className="text-[11px] text-gray-500 font-semibold leading-normal max-w-xs mx-auto">
+                    To enable live email dispatch, please configure your <code className="bg-amber-100 px-1 py-0.5 rounded text-amber-900 font-mono">BREVO_API_KEY</code> in <code className="bg-amber-100 px-1 py-0.5 rounded text-amber-900 font-mono">.env</code>. Until then, use this code to sign in:
+                  </p>
+                  <div className="flex items-center justify-center gap-2 pt-1">
+                    <span className="bg-emerald-800 text-emerald-50 font-mono font-black text-xs px-2.5 py-1.5 rounded-lg shadow-sm tracking-widest select-all cursor-pointer">
+                      {simulatedOtpCode}
+                    </span>
+                  </div>
+                  <p className="text-[9px] text-gray-400 font-semibold mt-0.5 leading-none">Click or double-click to select and copy</p>
+                </div>
+              )
+            )}
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-500 flex items-center gap-1">
+                <Lock className="w-3.5 h-3.5 text-gray-400" />
+                <span>Verification Code (OTP)</span>
+              </label>
+              <input
+                type="text"
+                required
+                maxLength={4}
+                placeholder="e.g. 1234"
+                value={verificationOtp}
+                onChange={(e) => setVerificationOtp(e.target.value.replace(/\D/g, ''))}
+                disabled={loading}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-center text-sm font-mono font-bold tracking-widest outline-none focus:border-emerald-600/40 text-gray-800"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 bg-emerald-800 hover:bg-emerald-950 text-white font-extrabold rounded-xl text-xs transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 font-sans"
+              >
+                {loading ? 'Verifying security code...' : 'Confirm Verification Code 🛡️'}
+              </button>
+
+              <div className="flex justify-between items-center pt-2 text-[10px] font-bold">
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={loading}
+                  className="text-emerald-800 hover:text-emerald-950 hover:underline cursor-pointer disabled:opacity-50"
+                >
+                  Resend Code 🔄
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setShowVerification(false); setError(null); setSuccessMsg(null); }}
+                  disabled={loading}
+                  className="text-gray-500 hover:text-gray-800 hover:underline cursor-pointer"
+                >
+                  Back to Sign In 👈
+                </button>
+              </div>
+            </div>
+          </form>
+        ) : activeTab === 'signin' ? (
           <form onSubmit={handleEmailLogin} className="space-y-4">
             <div className="space-y-1.5">
               <label className="text-xs font-bold text-gray-500 flex items-center gap-1">
