@@ -18,6 +18,7 @@ import {
 import { Restaurant, Rider, Order, Review, MenuItem, ChatMessage } from '../types';
 import RestaurantView from './RestaurantView';
 import RiderView from './RiderView';
+import SalesGrowthChart from './SalesGrowthChart';
 
 interface AdminViewProps {
   restaurants: Restaurant[];
@@ -58,7 +59,7 @@ export default function AdminView({
   onAssignRiderToOrder,
   onSendMessage,
 }: AdminViewProps) {
-  const [adminTab, setAdminTab] = useState<'overview' | 'restaurants' | 'onboarding' | 'orders' | 'payouts' | 'restaurant_hub' | 'rider_dashboard'>('overview');
+  const [adminTab, setAdminTab] = useState<'overview' | 'restaurants' | 'onboarding' | 'orders' | 'payouts' | 'restaurant_hub' | 'rider_dashboard' | 'analytics'>('overview');
   const [commissionRate, setCommissionRate] = useState(15); // Platform standard commission rate
   const [bannerMessage, setBannerMessage] = useState<string | null>(null);
 
@@ -154,6 +155,7 @@ export default function AdminView({
           <div className="flex flex-wrap gap-1.5 text-xs bg-gray-50 border border-gray-100 p-1.5 rounded-2xl">
             {[
               { id: 'overview' as const, label: 'Overview' },
+              { id: 'analytics' as const, label: '📈 Sales & Growth' },
               { id: 'restaurants' as const, label: 'KYC Approvals' },
               { id: 'onboarding' as const, label: 'Add Clients & Riders' },
               { id: 'orders' as const, label: 'Live Order Monitor' },
@@ -185,20 +187,32 @@ export default function AdminView({
               
               {/* Stat card deck */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="bg-white border border-gray-100 p-5 rounded-2xl shadow-xs">
-                  <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                <div 
+                  onClick={() => setAdminTab('analytics')}
+                  className="bg-white border border-gray-100 p-5 rounded-2xl shadow-xs cursor-pointer hover:border-emerald-700/30 hover:shadow-sm transition-all group"
+                >
+                  <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-1 group-hover:text-emerald-800 transition-colors">
                     <TrendingUp className="w-3.5 h-3.5 text-emerald-800" /> Platform Gross Volume
                   </span>
                   <p className="text-2xl font-black text-amber-600 mt-2">₦{totalRevenue.toLocaleString()}</p>
-                  <p className="text-[9px] text-gray-400 mt-1">Sum of all successfully settled meals</p>
+                  <div className="flex justify-between items-center mt-1">
+                    <p className="text-[9px] text-gray-400">Sum of all successfully settled meals</p>
+                    <span className="text-[9px] font-extrabold text-emerald-800 opacity-0 group-hover:opacity-100 transition-opacity">Trends →</span>
+                  </div>
                 </div>
 
-                <div className="bg-white border border-gray-100 p-5 rounded-2xl shadow-xs">
-                  <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-1">
+                <div 
+                  onClick={() => setAdminTab('analytics')}
+                  className="bg-white border border-gray-100 p-5 rounded-2xl shadow-xs cursor-pointer hover:border-emerald-700/30 hover:shadow-sm transition-all group"
+                >
+                  <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-1 group-hover:text-emerald-800 transition-colors">
                     <DollarSign className="w-3.5 h-3.5 text-emerald-500" /> Platform Commission ({commissionRate}%)
                   </span>
                   <p className="text-2xl font-black text-emerald-600 mt-2">₦{platformCommissions.toLocaleString()}</p>
-                  <p className="text-[9px] text-gray-400 mt-1">Net platform earnings from operations</p>
+                  <div className="flex justify-between items-center mt-1">
+                    <p className="text-[9px] text-gray-400">Net platform earnings from operations</p>
+                    <span className="text-[9px] font-extrabold text-emerald-800 opacity-0 group-hover:opacity-100 transition-opacity">Trends →</span>
+                  </div>
                 </div>
 
                 <div className="bg-white border border-gray-100 p-5 rounded-2xl shadow-xs">
@@ -658,6 +672,28 @@ export default function AdminView({
                 onUpdateOrderStatus={onUpdateOrderStatus}
                 onSendMessage={onSendMessage}
               />
+            </div>
+          )}
+
+          {/* 5. SALES & GROWTH ANALYTICS */}
+          {adminTab === 'analytics' && (
+            <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm space-y-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-100 pb-4">
+                <div>
+                  <h3 className="text-base font-black text-emerald-950 flex items-center gap-1.5">
+                    <TrendingUp className="w-5 h-5 text-emerald-800" />
+                    <span>Lagos Sales & Growth Telemetry</span>
+                  </h3>
+                  <p className="text-[11px] text-gray-400 font-semibold">Granular analytics detailing daily revenue curves, customer peak windows, and recipe performance</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider bg-emerald-50 border border-emerald-100 px-2.5 py-1 rounded-full">
+                    Active Session Engine
+                  </span>
+                </div>
+              </div>
+              <SalesGrowthChart orders={orders} menuItems={menuItems} />
             </div>
           )}
 

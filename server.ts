@@ -700,7 +700,7 @@ app.post("/api/customers", (req, res) => {
     email: req.body.email || "",
     phone: req.body.phone || "+234 800 000 0000",
     address: req.body.address || "Lagos, Nigeria",
-    avatar: req.body.avatar || `https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80`,
+    avatar: req.body.avatar || "",
     balance: req.body.balance !== undefined ? parseFloat(req.body.balance) : 0,
     walletCreated: req.body.walletCreated !== undefined ? !!req.body.walletCreated : false,
     createdAt: new Date().toISOString()
@@ -718,7 +718,16 @@ app.put("/api/customers/:id", (req, res) => {
     if (req.body.phone !== undefined) customer.phone = req.body.phone;
     if (req.body.address !== undefined) customer.address = req.body.address;
     if (req.body.balance !== undefined) customer.balance = parseFloat(req.body.balance);
-    if (req.body.walletCreated !== undefined) customer.walletCreated = !!req.body.walletCreated;
+    if (req.body.walletCreated !== undefined) {
+      customer.walletCreated = !!req.body.walletCreated;
+      if (customer.walletCreated && !customer.bankAccountNumber) {
+        // Generate unique Nigerian virtual bank account details
+        const randomNum = Math.floor(1000000 + Math.random() * 9000000); // 7 digits
+        customer.bankAccountNumber = `950${randomNum}`;
+        customer.bankName = "Providus Bank (FoodHub Settlements)";
+        customer.bankAccountName = `FDHB-${customer.name.toUpperCase().replace(/[^A-Z]/g, '')}`;
+      }
+    }
     saveDatabase(db);
     res.json(customer);
   } else {
@@ -829,7 +838,7 @@ app.post("/api/auth/register", (req, res) => {
     email: trimmedEmail,
     phone,
     address,
-    avatar: avatar || `https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80`,
+    avatar: avatar || "",
     balance: 0, // starting balance is 0 as requested
     walletCreated: false, // Must explicitly create/activate wallet account
     password, // stored securely in db_store.json
@@ -857,11 +866,27 @@ app.post("/api/auth/login", (req, res) => {
 
 // 2b. Admin Registration
 app.post("/api/admin/register", (req, res) => {
-  const { email, password, name } = req.body;
+  const { email, password, name, businessPasscode } = req.body;
   if (!email || !password || !name) {
     return res.status(400).json({ error: "All admin registration fields (email, password, name) are required." });
   }
+  
   const trimmedEmail = email.trim().toLowerCase();
+  
+  // 1. Verify business email domain
+  if (!trimmedEmail.endsWith("@foodhub.com") && !trimmedEmail.endsWith("@foodhublagos.com")) {
+    return res.status(403).json({ 
+      error: "Access Denied: Admin account creation is strictly restricted to verified corporate domains (@foodhub.com or @foodhublagos.com)." 
+    });
+  }
+
+  // 2. Verify business passcode
+  if (businessPasscode !== "FOODHUB-CORP-SECURE-2026") {
+    return res.status(403).json({ 
+      error: "Access Denied: Invalid Business Authorization Passcode. You must be an authorized FoodHub employee to register." 
+    });
+  }
+
   if (!db.admins) {
     db.admins = [];
   }

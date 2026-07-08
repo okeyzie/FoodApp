@@ -15,6 +15,7 @@ export default function AdminAuth({ onLoginSuccess, admins }: AdminAuthProps) {
   const [signUpName, setSignUpName] = useState('');
   const [signUpEmail, setSignUpEmail] = useState('');
   const [signUpPassword, setSignUpPassword] = useState('');
+  const [signUpPasscode, setSignUpPasscode] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -81,8 +82,22 @@ export default function AdminAuth({ onLoginSuccess, admins }: AdminAuthProps) {
   // Handle admin account creation
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!signUpName || !signUpEmail || !signUpPassword) {
-      setError('Please fill in all registration fields.');
+    if (!signUpName || !signUpEmail || !signUpPassword || !signUpPasscode) {
+      setError('Please fill in all registration fields, including the Business Authorization Passcode.');
+      return;
+    }
+
+    const trimmedEmail = signUpEmail.trim().toLowerCase();
+    
+    // 1. Verify business email domain on frontend/offline fallback too
+    if (!trimmedEmail.endsWith("@foodhub.com") && !trimmedEmail.endsWith("@foodhublagos.com")) {
+      setError("Access Denied: Admin creation is strictly restricted to verified corporate domains (@foodhub.com or @foodhublagos.com).");
+      return;
+    }
+
+    // 2. Verify business passcode on frontend/offline fallback too
+    if (signUpPasscode !== "FOODHUB-CORP-SECURE-2026") {
+      setError("Access Denied: Invalid Business Authorization Passcode. You must be an authorized staff with the corporate code.");
       return;
     }
 
@@ -94,8 +109,9 @@ export default function AdminAuth({ onLoginSuccess, admins }: AdminAuthProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: signUpName,
-          email: signUpEmail,
+          email: trimmedEmail,
           password: signUpPassword,
+          businessPasscode: signUpPasscode,
         }),
       });
 
@@ -107,7 +123,7 @@ export default function AdminAuth({ onLoginSuccess, admins }: AdminAuthProps) {
         const newAdmin: AdminAccount = {
           id: `admin-${Date.now()}`,
           name: signUpName,
-          email: signUpEmail.trim().toLowerCase(),
+          email: trimmedEmail,
           password: signUpPassword,
           createdAt: new Date().toISOString()
         };
@@ -131,7 +147,7 @@ export default function AdminAuth({ onLoginSuccess, admins }: AdminAuthProps) {
       const newAdmin: AdminAccount = {
         id: `admin-${Date.now()}`,
         name: signUpName,
-        email: signUpEmail.trim().toLowerCase(),
+        email: trimmedEmail,
         password: signUpPassword,
         createdAt: new Date().toISOString()
       };
@@ -156,6 +172,7 @@ export default function AdminAuth({ onLoginSuccess, admins }: AdminAuthProps) {
     setSignUpName(`Manager ${randomId}`);
     setSignUpEmail(`manager.${randomId}@foodhub.com`);
     setSignUpPassword('password123');
+    setSignUpPasscode('FOODHUB-CORP-SECURE-2026');
     setActiveTab('signup');
   };
 
@@ -305,6 +322,25 @@ export default function AdminAuth({ onLoginSuccess, admins }: AdminAuthProps) {
                 disabled={loading}
                 className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-xs outline-none focus:border-rose-500/40 text-gray-800 font-medium"
               />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-gray-500 flex items-center gap-1">
+                <span className="text-rose-500 font-black">⚙️</span>
+                <span>Business Authorization Passcode</span>
+              </label>
+              <input
+                type="text"
+                required
+                placeholder="FOODHUB-CORP-SECURE-2026"
+                value={signUpPasscode}
+                onChange={(e) => setSignUpPasscode(e.target.value)}
+                disabled={loading}
+                className="w-full bg-rose-50 border border-rose-200 rounded-xl px-4 py-3 text-xs outline-none focus:border-rose-500/40 text-rose-950 font-mono font-bold"
+              />
+              <span className="block text-[9px] text-rose-600 font-bold leading-normal">
+                ⚠️ Strictly restricted to verified company employees. Entering an invalid code will block account registration.
+              </span>
             </div>
 
             <button

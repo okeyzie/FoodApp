@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, Lock, User, Phone, MapPin, Sparkles, ShieldCheck, Upload, Image, Trash2 } from 'lucide-react';
+import { Mail, Lock, User, Phone, MapPin, Sparkles, ShieldCheck, Upload, Image, Trash2, Heart, Clock, Star, Utensils } from 'lucide-react';
 import { motion } from 'motion/react';
 import { CustomerAccount } from '../types';
 
@@ -11,6 +11,17 @@ interface CustomerAuthProps {
 export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuthProps) {
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
   
+  // Interactive Showcase States
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'soups' | 'rice' | 'grills' | 'dessert'>('all');
+  const [dishLikes, setDishLikes] = useState<Record<string, number>>({
+    'ld-1': 245,
+    'ld-2': 512,
+    'ld-3': 189,
+    'ld-4': 310
+  });
+  const [likedDishes, setLikedDishes] = useState<Record<string, boolean>>({});
+  const [viewingDetailsId, setViewingDetailsId] = useState<string | null>(null);
+
   // Sign In states
   const [signInEmail, setSignInEmail] = useState('');
   const [signInPassword, setSignInPassword] = useState('');
@@ -355,59 +366,319 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
     }
   };
 
+  const landingDishes = [
+    {
+      id: 'ld-1',
+      name: 'Spicy Seafood Okra Swallows 🍲',
+      category: 'soups',
+      price: 12500,
+      time: '20 mins',
+      rating: 4.9,
+      chef: "Nkechi's Lekki Kitchen",
+      image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80',
+      description: 'Prepared with jumbo prawns, crabs, fresh fish, minced spinach, and premium fresh okra. Prepared with local spices and served with soft pounded yam or yellow garri.'
+    },
+    {
+      id: 'ld-2',
+      name: 'Elite Lekki Smokey Jollof Rice 🍚',
+      category: 'rice',
+      price: 4500,
+      time: '15 mins',
+      rating: 5.0,
+      chef: 'Mega Jollof & Grill',
+      image: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?auto=format&fit=crop&w=600&q=80',
+      description: 'Firewood-smoke-infused parboiled rice, sweet fried plantains (dodo), spiced pepper sauce, and tender peppered beef.'
+    },
+    {
+      id: 'ld-3',
+      name: 'Charcoal Roasted Peppered Suya 🥩',
+      category: 'grills',
+      price: 6000,
+      time: '12 mins',
+      rating: 4.8,
+      chef: 'Alhaji Suya Spot (Ikeja)',
+      image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=600&q=80',
+      description: 'Spiced tender beef flank cuts skewered, roasted slow over hot embers, finished with real yaji pepper, cabbage, and red onions.'
+    },
+    {
+      id: 'ld-4',
+      name: 'Gourmet Double Beef Burger 🍔',
+      category: 'dessert',
+      price: 7500,
+      time: '10 mins',
+      rating: 4.7,
+      chef: 'Burgers & Co. Ikoyi',
+      image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80',
+      description: 'Two pure wagyu patties, sharp cheddar cheese, secret burger layout sauce, inside toasted brioche buns. Served with hand-cut fries.'
+    }
+  ];
+
+  const handleToggleLike = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const isLiked = likedDishes[id];
+    setLikedDishes(prev => ({ ...prev, [id]: !isLiked }));
+    setDishLikes(prev => ({
+      ...prev,
+      [id]: isLiked ? prev[id] - 1 : prev[id] + 1
+    }));
+  };
+
   return (
-    <div className="max-w-md mx-auto my-12 px-4">
-      {/* Brand Header */}
-      <div className="text-center mb-8">
-        <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 border border-emerald-100 rounded-full text-xs font-black text-emerald-800 mb-3">
-          <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
-          <span>Secured Live Customer Hub</span>
+    <div className="relative overflow-hidden bg-gradient-to-br from-[#FAF6ED] via-[#FCFAF5] to-[#E2F1EB] min-h-[calc(100vh-80px)] py-8 lg:py-16">
+      {/* Decorative ambient elements for realistic depth */}
+      <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-emerald-500/5 rounded-full filter blur-3xl pointer-events-none" />
+      <div className="absolute bottom-10 right-1/4 w-[600px] h-[600px] bg-amber-500/5 rounded-full filter blur-3xl pointer-events-none" />
+      
+      <div className="max-w-7xl mx-auto px-4 relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+        
+        {/* LEFT COLUMN: GORGEOUS INTERACTIVE LANDING SHOWCASE */}
+        <div className="lg:col-span-7 space-y-8 text-left py-2">
+          {/* Brand Badge & Hero Title */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 border border-emerald-100 rounded-full text-xs font-black text-emerald-800">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                <span>🇳🇬 Lagos No. 1 Fine Dining App</span>
+              </div>
+              
+              <button
+                type="button"
+                onClick={() => {
+                  const target = document.getElementById('auth-form-container');
+                  if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    target.classList.add('ring-8', 'ring-emerald-700/15');
+                    setTimeout(() => target.classList.remove('ring-8', 'ring-emerald-700/15'), 2000);
+                    setTimeout(() => {
+                      const emailInput = document.getElementById('customer-email-input');
+                      if (emailInput) {
+                        emailInput.focus();
+                      }
+                    }, 500);
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 px-4.5 py-2 bg-emerald-800 hover:bg-emerald-900 active:bg-emerald-950 text-white rounded-full text-xs font-black shadow-md hover:shadow-lg transition-all cursor-pointer hover:scale-[1.03] active:scale-95"
+              >
+                <span>Login / Sign Up</span>
+                <span className="text-xs">🔑</span>
+              </button>
+            </div>
+            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-emerald-950 leading-tight">
+              Savor Lagos' Finest <br className="hidden sm:inline" />
+              <span className="text-emerald-800 relative inline-block">
+                Culinary Delicacies
+                <span className="absolute left-0 bottom-1 w-full h-1 bg-emerald-300 rounded-full opacity-60" />
+              </span>
+            </h1>
+            <p className="text-gray-600 text-sm md:text-base leading-relaxed max-w-xl font-semibold">
+              We connect you directly to elite kitchens in Lekki, Ikoyi, and Ikeja GRA. Taste real charcoal-grilled Suya, authentic Jollof, and gourmet seafood Okra delivered with hyper-speed logistics and simple cashless payments.
+            </p>
+          </div>
+
+          {/* Bento-Grid Stats Dashboard */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-emerald-50/40 border border-emerald-100/50 p-4 rounded-2xl space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-emerald-800 font-extrabold uppercase font-mono tracking-wider">Logistics</span>
+                <span className="text-lg">⚡</span>
+              </div>
+              <h3 className="text-base font-black text-emerald-950">15 Mins Avg</h3>
+              <p className="text-[10px] text-gray-500 font-semibold leading-normal">Lightning dispatch with smart heat-retaining food pouches.</p>
+            </div>
+            
+            <div className="bg-emerald-50/40 border border-emerald-100/50 p-4 rounded-2xl space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-emerald-800 font-extrabold uppercase font-mono tracking-wider">Cashless</span>
+                <span className="text-lg">💳</span>
+              </div>
+              <h3 className="text-base font-black text-emerald-950">Bank Transfers</h3>
+              <p className="text-[10px] text-gray-500 font-semibold leading-normal">Instant virtual accounts generated for zero-friction settlement.</p>
+            </div>
+
+            <div className="bg-emerald-50/40 border border-emerald-100/50 p-4 rounded-2xl space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] text-emerald-800 font-extrabold uppercase font-mono tracking-wider">Quality</span>
+                <span className="text-lg">🍲</span>
+              </div>
+              <h3 className="text-base font-black text-emerald-950">5-Star Kitchens</h3>
+              <p className="text-[10px] text-gray-500 font-semibold leading-normal">Strict hygiene reviews on every chef & rider.</p>
+            </div>
+          </div>
+
+          {/* Interactive Menu Board */}
+          <div className="bg-white border border-gray-200/60 rounded-3xl p-6 space-y-6 shadow-xs">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-100 pb-4">
+              <div>
+                <h2 className="text-lg font-black text-emerald-950 flex items-center gap-1.5">
+                  <Utensils className="w-5 h-5 text-emerald-800" />
+                  <span>Interactive Taste Playground</span>
+                </h2>
+                <p className="text-[11px] text-gray-400 font-semibold">Click dishes to inspect recipes or like to upvote!</p>
+              </div>
+              
+              {/* Filter pills */}
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { id: 'all', label: 'All 🍲' },
+                  { id: 'soups', label: 'Soups 🥣' },
+                  { id: 'rice', label: 'Rice 🍚' },
+                  { id: 'grills', label: 'Grills 🥩' },
+                  { id: 'dessert', label: 'Comfort 🍔' }
+                ].map(cat => (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id as any)}
+                    type="button"
+                    className={`px-3 py-1.5 text-[10px] font-black rounded-lg border transition-all cursor-pointer ${
+                      selectedCategory === cat.id
+                        ? 'bg-emerald-800 text-white border-emerald-800/20 shadow-xs'
+                        : 'bg-gray-50 border-gray-200 text-gray-600 hover:text-gray-800 hover:bg-gray-100'
+                    }`}
+                  >
+                    {cat.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Menu Items Showcase Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {landingDishes
+                .filter(d => selectedCategory === 'all' || d.category === selectedCategory)
+                .map(dish => {
+                  const isLiked = likedDishes[dish.id];
+                  const totalLikes = dishLikes[dish.id];
+                  const isViewingDetails = viewingDetailsId === dish.id;
+
+                  return (
+                    <div
+                      key={dish.id}
+                      onClick={() => setViewingDetailsId(isViewingDetails ? null : dish.id)}
+                      className={`group border rounded-2xl overflow-hidden bg-gray-50/50 hover:bg-white cursor-pointer transition-all duration-300 text-left ${
+                        isViewingDetails ? 'border-emerald-700/40 ring-2 ring-emerald-700/5' : 'border-gray-200/80 hover:border-emerald-600/30'
+                      }`}
+                    >
+                      <div className="h-32 overflow-hidden relative">
+                        <img
+                          src={dish.image}
+                          alt={dish.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          referrerPolicy="no-referrer"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                        
+                        {/* Rating Tag */}
+                        <span className="absolute top-2.5 left-2.5 bg-white/95 text-emerald-800 text-[9px] font-black px-2 py-0.5 rounded-full flex items-center gap-0.5 shadow-xs">
+                          <Star className="w-2.5 h-2.5 fill-emerald-800 text-emerald-800" /> {dish.rating}
+                        </span>
+
+                        {/* Price Tag Overlay */}
+                        <span className="absolute bottom-2.5 right-2.5 bg-emerald-900/90 text-white text-[10px] font-black px-2.5 py-1 rounded-lg">
+                          ₦{dish.price.toLocaleString()}
+                        </span>
+
+                        {/* Interactive Love Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => handleToggleLike(dish.id, e)}
+                          className={`absolute top-2.5 right-2.5 p-1.5 rounded-full border shadow-xs transition-all cursor-pointer ${
+                            isLiked
+                              ? 'bg-rose-50 border-rose-100 text-rose-600 scale-110'
+                              : 'bg-white/80 backdrop-blur-xs border-gray-100 text-gray-500 hover:text-rose-600 hover:bg-white'
+                          }`}
+                        >
+                          <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-rose-600' : ''}`} />
+                        </button>
+                      </div>
+
+                      <div className="p-3 text-left space-y-1.5">
+                        <div className="flex justify-between items-start">
+                          <h4 className="text-xs font-extrabold text-emerald-950 group-hover:text-emerald-800 transition-colors line-clamp-1">
+                            {dish.name}
+                          </h4>
+                        </div>
+                        <p className="text-[10px] text-gray-400 font-bold">By {dish.chef}</p>
+                        
+                        <div className="flex items-center gap-3 text-[9px] text-gray-500 font-semibold pt-1 border-t border-gray-100">
+                          <span className="flex items-center gap-0.5"><Clock className="w-3 h-3 text-emerald-700" /> {dish.time}</span>
+                          <span className="flex items-center gap-0.5">❤️ {totalLikes} upvotes</span>
+                        </div>
+
+                        {/* Expandable Recipe Description */}
+                        {isViewingDetails && (
+                          <div className="pt-2.5 text-[10px] text-gray-600 leading-relaxed border-t border-dashed border-gray-200 mt-1 space-y-1 bg-emerald-50/20 p-2 rounded-lg">
+                            <p className="font-bold text-emerald-900">👩‍🍳 Kitchen Notes:</p>
+                            <p>{dish.description}</p>
+                            <div className="grid grid-cols-2 gap-1.5 pt-1.5 text-[9px] text-emerald-800 font-bold">
+                              <span>🔥 Temp: Piping Hot</span>
+                              <span>🌱 100% Organic Ingredients</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
         </div>
-        <h1 className="text-3xl font-black tracking-tight text-emerald-950">FoodHub Lagos</h1>
-        <p className="text-xs text-gray-500 font-semibold mt-1">Authenticate to access real, live gourmet delivery logistics</p>
-      </div>
 
-      {/* Tabs */}
-      <div className="bg-gray-100 p-1.5 rounded-2xl flex mb-6 border border-gray-200/50">
-        <button
-          onClick={() => { setActiveTab('signin'); setError(null); }}
-          className={`flex-1 py-3 text-xs font-black rounded-xl transition-all ${
-            activeTab === 'signin'
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-900'
-          }`}
-        >
-          Sign In
-        </button>
-        <button
-          onClick={() => { setActiveTab('signup'); setError(null); }}
-          className={`flex-1 py-3 text-xs font-black rounded-xl transition-all ${
-            activeTab === 'signup'
-              ? 'bg-white text-gray-900 shadow-sm'
-              : 'text-gray-500 hover:text-gray-900'
-          }`}
-        >
-          Register Account
-        </button>
-      </div>
+        {/* RIGHT COLUMN: PREMIUM SECURE LOG IN / REGISTER */}
+        <div id="auth-form-container" className="lg:col-span-5 w-full max-w-md mx-auto transition-all duration-300">
+          {/* Tab Header Card */}
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 border border-emerald-100 rounded-full text-xs font-black text-emerald-800 mb-3">
+              <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
+              <span>Secured Live Customer Hub</span>
+            </div>
+            <h2 className="text-2xl font-black tracking-tight text-emerald-950">Access Account</h2>
+            <p className="text-xs text-gray-400 font-semibold mt-1">Authenticate to access real, live gourmet delivery logistics</p>
+          </div>
 
-      {/* Feedback Messages */}
-      {error && (
-        <div className="p-4 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl font-bold mb-6 flex items-start gap-2.5">
-          <span className="text-base leading-none">⚠️</span>
-          <span>{error}</span>
-        </div>
-      )}
+          {/* Tabs */}
+          <div className="bg-gray-100 p-1.5 rounded-2xl flex mb-6 border border-gray-200/50">
+            <button
+              onClick={() => { setActiveTab('signin'); setError(null); }}
+              type="button"
+              className={`flex-1 py-3 text-xs font-black rounded-xl transition-all cursor-pointer ${
+                activeTab === 'signin'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              Sign In
+            </button>
+            <button
+              onClick={() => { setActiveTab('signup'); setError(null); }}
+              type="button"
+              className={`flex-1 py-3 text-xs font-black rounded-xl transition-all cursor-pointer ${
+                activeTab === 'signup'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-900'
+              }`}
+            >
+              Register Account
+            </button>
+          </div>
 
-      {successMsg && (
-        <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl font-bold mb-6 flex items-start gap-2.5 animate-pulse">
-          <span className="text-base leading-none">✔</span>
-          <span>{successMsg}</span>
-        </div>
-      )}
+          {/* Feedback Messages */}
+          {error && (
+            <div className="p-4 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl font-bold mb-6 flex items-start gap-2.5">
+              <span className="text-base leading-none">⚠️</span>
+              <span>{error}</span>
+            </div>
+          )}
 
-      {/* Forms Container */}
-      <div className="bg-white border border-gray-200/80 shadow-xs rounded-3xl p-6 sm:p-8 space-y-6">
+          {successMsg && (
+            <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs rounded-xl font-bold mb-6 flex items-start gap-2.5 animate-pulse">
+              <span className="text-base leading-none">✔</span>
+              <span>{successMsg}</span>
+            </div>
+          )}
+
+          {/* Forms Container */}
+          <div className="bg-white border border-gray-200/80 shadow-xs rounded-3xl p-6 sm:p-8 space-y-6">
         {activeTab === 'signin' ? (
           <form onSubmit={handleEmailLogin} className="space-y-4">
             <div className="space-y-1.5">
@@ -416,13 +687,14 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
                 <span>Email Address</span>
               </label>
               <input
+                id="customer-email-input"
                 type="email"
                 required
                 placeholder="e.g. blessing.amadi@example.com"
                 value={signInEmail}
                 onChange={(e) => setSignInEmail(e.target.value)}
                 disabled={loading}
-                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-xs outline-none focus:border-emerald-600/40 text-gray-800"
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-xs outline-none focus:border-emerald-600/40 text-gray-800 focus:ring-2 focus:ring-emerald-600/20"
               />
             </div>
 
@@ -662,5 +934,8 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
         </div>
       </div>
     </div>
+  </div>
+</div>
+</div>
   );
 }

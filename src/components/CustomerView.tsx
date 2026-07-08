@@ -18,6 +18,9 @@ import {
   Wallet,
   ShieldCheck,
   CheckCircle,
+  User,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { Restaurant, MenuItem, Order, OrderItem, ChatMessage, PaymentMethod, PaymentProvider, CustomerAccount } from '../types';
 import LiveTrackingMap from './LiveTrackingMap';
@@ -91,6 +94,9 @@ export default function CustomerView({
   const [showFundModal, setShowFundModal] = useState(false);
   const [showWalletCreationModal, setShowWalletCreationModal] = useState(false);
   const [fundAmount, setFundAmount] = useState('5000');
+  const [copiedAccountNumber, setCopiedAccountNumber] = useState(false);
+  const [isSimulatingTransfer, setIsSimulatingTransfer] = useState(false);
+  const [simulationStep, setSimulationStep] = useState(0);
   
   // Chat state
   const [newMessageText, setNewMessageText] = useState('');
@@ -254,22 +260,56 @@ export default function CustomerView({
     try {
       await onUpdateCustomerAccount(activeCustomer.id, { walletCreated: true, balance: 0 });
       setShowWalletCreationModal(false);
-      alert("🎉 Your secure FoodHub Digital Wallet has been successfully activated! Your starting balance is ₦0.00. You can now fund it using Card or Bank Transfer.");
+      
+      const cleanName = activeCustomer.name.toUpperCase().replace(/[^A-Z]/g, '');
+      const bankName = "Providus Bank (FoodHub Settlements)";
+      const accNumber = `950${Math.floor(1000000 + Math.random() * 9000000)}`;
+      const accName = `FDHB-${cleanName}`;
+      
+      alert(`🎉 Your secure FoodHub Digital Wallet has been successfully activated! \n\nWe have instantly generated your unique virtual local bank transfer details:\n🏦 Bank: ${bankName}\n🔢 Account Number: ${accNumber}\n👤 Account Name: ${accName}\n\nYou can fund your wallet at any time by making a bank transfer directly to this unique local account!`);
     } catch (e) {
       console.error(e);
       alert("Failed to activate wallet. Please try again.");
     }
   };
 
-  const handleFundWalletSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSimulateBankTransfer = async () => {
     if (!activeCustomer || !fundAmount) return;
     const added = parseFloat(fundAmount);
-    if (isNaN(added) || added <= 0) return;
-    const newBalance = activeCustomer.balance + added;
-    await onUpdateCustomerAccount(activeCustomer.id, { balance: newBalance });
-    setShowFundModal(false);
-    alert(`Wallet funded successfully with ₦${added.toLocaleString()}!`);
+    if (isNaN(added) || added <= 0) {
+      alert("Please enter a valid amount to transfer.");
+      return;
+    }
+    
+    setIsSimulatingTransfer(true);
+    setSimulationStep(1);
+    
+    setTimeout(() => {
+      setSimulationStep(2);
+      setTimeout(() => {
+        setSimulationStep(3);
+        setTimeout(async () => {
+          try {
+            const newBalance = activeCustomer.balance + added;
+            await onUpdateCustomerAccount(activeCustomer.id, { balance: newBalance });
+            setIsSimulatingTransfer(false);
+            setSimulationStep(0);
+            setShowFundModal(false);
+            alert(`⚡ Secure Bank Settlement Confirmed!\n\nYour FoodHub virtual wallet has been credited with ₦${added.toLocaleString()} via instant local bank transfer to your unique virtual account.`);
+          } catch (e) {
+            console.error(e);
+            setIsSimulatingTransfer(false);
+            setSimulationStep(0);
+            alert("Settlement simulation failed. Please try again.");
+          }
+        }, 1200);
+      }, 1200);
+    }, 1200);
+  };
+
+  const handleFundWalletSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await handleSimulateBankTransfer();
   };
 
   const handleAddAccountSubmit = async (e: React.FormEvent) => {
@@ -322,8 +362,12 @@ export default function CustomerView({
           {/* Active User Info & Wallet */}
           {activeCustomer ? (
             <div className="flex items-center gap-3 self-start sm:self-center">
-              <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-emerald-600/20 bg-emerald-50 shrink-0">
-                <img src={activeCustomer.avatar} alt={activeCustomer.name} className="w-full h-full object-cover" />
+              <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-emerald-600/20 bg-emerald-100 flex items-center justify-center shrink-0">
+                {activeCustomer.avatar ? (
+                  <img src={activeCustomer.avatar} alt={activeCustomer.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  <User className="w-5 h-5 text-emerald-800" />
+                )}
               </div>
               <div>
                 <div className="flex items-center gap-1.5">
@@ -1227,61 +1271,178 @@ export default function CustomerView({
       {/* WALLET FUNDING GATEWAY MODAL */}
       {showFundModal && activeCustomer && (
         <div className="fixed inset-0 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center z-[110] p-4">
-          <div className="w-full max-w-sm bg-white rounded-3xl overflow-hidden shadow-2xl border border-slate-100 text-slate-800 flex flex-col">
-            <div className="p-5 bg-emerald-600 text-white flex items-center justify-between">
+          <div className="w-full max-w-md bg-white rounded-3xl overflow-hidden shadow-2xl border border-slate-100 text-slate-800 flex flex-col relative">
+            
+            {/* Header */}
+            <div className="p-5 bg-emerald-850 text-white flex items-center justify-between">
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider opacity-90 font-mono">Secure Settlement</span>
-                <h3 className="text-base font-black mt-0.5">Fund Your Wallet</h3>
+                <span className="text-[10px] font-bold uppercase tracking-wider opacity-90 font-mono">Secure Settlement Portal</span>
+                <h3 className="text-base font-black mt-0.5">Fund via Local Bank Transfer</h3>
               </div>
-              <button onClick={() => setShowFundModal(false)} className="text-white hover:text-gray-200 text-sm font-bold bg-white/10 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer">
+              <button 
+                onClick={() => {
+                  if (!isSimulatingTransfer) setShowFundModal(false);
+                }} 
+                disabled={isSimulatingTransfer}
+                className="text-white hover:text-gray-200 text-sm font-bold bg-white/10 w-7 h-7 rounded-full flex items-center justify-center cursor-pointer disabled:opacity-50"
+              >
                 ✕
               </button>
             </div>
-            
-            <form onSubmit={handleFundWalletSubmit} className="p-6 space-y-4">
-              <div className="bg-emerald-50 border border-emerald-100 p-4 rounded-2xl">
-                <p className="text-xs text-emerald-600 font-bold">Current Balance</p>
-                <p className="text-2xl font-black text-emerald-800 mt-1">₦{activeCustomer.balance.toLocaleString()}</p>
-              </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500">Select pre-set top-up amount:</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {['2000', '5000', '10000'].map((amount) => (
-                    <button
-                      type="button"
-                      key={amount}
-                      onClick={() => setFundAmount(amount)}
-                      className={`py-2 text-xs font-bold rounded-xl border transition-all cursor-pointer ${
-                        fundAmount === amount
-                          ? 'bg-emerald-600 border-emerald-600 text-white'
-                          : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
-                      }`}
-                    >
-                      ₦{parseInt(amount).toLocaleString()}
-                    </button>
-                  ))}
+            {/* Simulation Overlay */}
+            {isSimulatingTransfer && (
+              <div className="absolute inset-0 bg-white/95 backdrop-blur-xs z-50 flex flex-col items-center justify-center p-6 text-center animate-fade-in">
+                <div className="w-16 h-16 rounded-full border-4 border-emerald-200 border-t-emerald-800 animate-spin mb-4" />
+                <h4 className="text-sm font-black text-slate-800">Secure Settlement Processing</h4>
+                
+                <div className="w-full max-w-xs bg-slate-100 h-1.5 rounded-full overflow-hidden mt-3">
+                  <div 
+                    className="bg-emerald-700 h-full transition-all duration-500" 
+                    style={{ width: simulationStep === 1 ? '33%' : simulationStep === 2 ? '66%' : '100%' }}
+                  />
+                </div>
+
+                <p className="text-[11px] font-bold text-emerald-800 mt-4 animate-pulse font-mono uppercase tracking-wide">
+                  {simulationStep === 1 && "⏳ Connecting to Interbank Settlement System (NIBSS)..."}
+                  {simulationStep === 2 && "🔍 Verifying transfer credit for virtual account..."}
+                  {simulationStep === 3 && "⚡ Reconciling FoodHub virtual wallet ledger..."}
+                </p>
+                <p className="text-[10px] text-gray-400 mt-1">Please do not refresh or close this window.</p>
+              </div>
+            )}
+
+            <div className="p-6 space-y-4 max-h-[85vh] overflow-y-auto">
+              {/* Wallet Info */}
+              <div className="flex items-center justify-between bg-slate-50 border border-slate-100 p-4 rounded-2xl">
+                <div>
+                  <p className="text-[10px] text-slate-500 font-extrabold uppercase tracking-wider font-mono">Current Wallet Balance</p>
+                  <p className="text-xl font-black text-emerald-950 mt-0.5">₦{activeCustomer.balance.toLocaleString()}</p>
+                </div>
+                <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-100 text-emerald-800">
+                  <Wallet className="w-5 h-5" />
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-slate-500">Or specify custom amount (₦)</label>
-                <input
-                  type="number"
-                  placeholder="e.g. 15000"
-                  value={fundAmount}
-                  onChange={(e) => setFundAmount(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 outline-none focus:border-emerald-300"
-                />
+              {/* Unique Generated Bank Details */}
+              <div className="border border-emerald-100 bg-emerald-50/40 p-4 rounded-2xl space-y-3 relative overflow-hidden">
+                <div className="absolute right-[-10px] top-[-10px] text-emerald-100 text-7xl font-bold font-serif select-none pointer-events-none opacity-20">
+                  🏦
+                </div>
+                <div className="flex items-center gap-1.5 text-emerald-900">
+                  <span className="text-xs font-black uppercase tracking-wider font-mono bg-emerald-100 border border-emerald-200 text-emerald-800 px-2 py-0.5 rounded-md">
+                    Unique Virtual Account Details
+                  </span>
+                </div>
+
+                <div className="space-y-2.5 pt-1 text-slate-800">
+                  <div>
+                    <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider font-mono">Receiving Bank</span>
+                    <span className="block text-xs font-extrabold text-slate-800">
+                      {activeCustomer.bankName || "Providus Bank (FoodHub Settlements)"}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider font-mono">Account Name</span>
+                    <span className="block text-xs font-extrabold text-slate-800">
+                      {activeCustomer.bankAccountName || `FDHB-${activeCustomer.name.toUpperCase().replace(/[^A-Z]/g, '')}`}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between bg-white border border-slate-100 p-2.5 rounded-xl">
+                    <div>
+                      <span className="block text-[8px] font-bold text-slate-400 uppercase tracking-wider font-mono">Virtual Account Number</span>
+                      <span className="block text-sm font-black text-emerald-850 tracking-wider font-mono">
+                        {activeCustomer.bankAccountNumber || "9501234567"}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const accNum = activeCustomer.bankAccountNumber || "9501234567";
+                        navigator.clipboard.writeText(accNum);
+                        setCopiedAccountNumber(true);
+                        setTimeout(() => setCopiedAccountNumber(false), 2000);
+                      }}
+                      className="p-2 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 rounded-lg transition-colors cursor-pointer flex items-center gap-1 text-[10px] font-black"
+                    >
+                      {copiedAccountNumber ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Copied</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Copy</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              <button
-                type="submit"
-                className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs transition-colors mt-2 shadow-md cursor-pointer"
-              >
-                Complete Wallet Funding 🔒
-              </button>
-            </form>
+              {/* Instructions */}
+              <div className="bg-amber-50 border border-amber-200/50 p-3.5 rounded-2xl flex items-start gap-2.5">
+                <span className="text-base mt-0.5">ℹ️</span>
+                <p className="text-[10px] text-amber-900 leading-normal font-semibold">
+                  <strong className="font-extrabold block mb-0.5">Payment Instructions:</strong>
+                  To top up, please open your commercial bank application (e.g. GTBank, Kuda, Zenith, Kuda, etc.) and complete a local bank transfer to your unique virtual account number shown above.
+                </p>
+              </div>
+
+              {/* Sandbox Simulation Panel */}
+              <div className="border border-slate-200 bg-slate-50 p-4 rounded-2xl space-y-3">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-wider font-mono">Live Simulation Sandbox</span>
+                </div>
+                
+                <p className="text-[10px] text-slate-400 leading-relaxed font-semibold">
+                  Settle payments instantly within this browser context by choosing an amount and clicking simulation below:
+                </p>
+
+                <div className="space-y-2">
+                  <div className="grid grid-cols-3 gap-2">
+                    {['2000', '5000', '10000'].map((amount) => (
+                      <button
+                        type="button"
+                        key={amount}
+                        onClick={() => setFundAmount(amount)}
+                        className={`py-2 text-xs font-extrabold rounded-xl border transition-all cursor-pointer ${
+                          fundAmount === amount
+                            ? 'bg-emerald-850 border-emerald-800 text-white'
+                            : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 shadow-3xs'
+                        }`}
+                      >
+                        ₦{parseInt(amount).toLocaleString()}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-black text-slate-400">₦</span>
+                    <input
+                      type="number"
+                      placeholder="Or enter custom amount (e.g. 15000)"
+                      value={fundAmount}
+                      onChange={(e) => setFundAmount(e.target.value)}
+                      className="w-full bg-white border border-slate-200 rounded-xl pl-8 pr-4 py-2.5 text-xs font-extrabold text-slate-800 outline-none focus:border-emerald-500 shadow-3xs"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleSimulateBankTransfer}
+                  className="w-full py-3 bg-emerald-800 hover:bg-emerald-950 text-white font-extrabold rounded-xl text-xs transition-colors shadow-md flex items-center justify-center gap-1.5 cursor-pointer border border-emerald-700/30"
+                >
+                  ⚡ Trigger Instant Bank Transfer Settlement
+                </button>
+              </div>
+
+            </div>
           </div>
         </div>
       )}
