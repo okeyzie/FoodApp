@@ -819,13 +819,13 @@ export default function RestaurantView({
       {/* EDIT RESTAURANT MODAL */}
       {showEditRestModal && (
         <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
-          <div className="w-full max-w-lg bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-xl text-gray-700">
-            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+          <div className="w-full max-w-lg bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-xl text-gray-700 flex flex-col max-h-[90vh]">
+            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <span className="text-lg">🏪</span>
                 <div>
                   <h4 className="text-sm font-black text-gray-800">Edit Restaurant Settings</h4>
-                  <p className="text-[10px] text-gray-400">Configure client metadata, coordinates, and branding cover</p>
+                  <p className="text-[10px] text-gray-400">Configure client metadata and branding cover</p>
                 </div>
               </div>
               <button onClick={() => setShowEditRestModal(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
@@ -833,7 +833,7 @@ export default function RestaurantView({
               </button>
             </div>
 
-            <form onSubmit={handleEditRestSubmit} className="p-5 space-y-4 text-xs">
+            <form onSubmit={handleEditRestSubmit} className="p-5 space-y-4 text-xs overflow-y-auto flex-1">
               
               <div className="grid grid-cols-2 gap-3">
                 <div className="flex flex-col">
@@ -916,17 +916,6 @@ export default function RestaurantView({
                     className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-800 outline-none focus:border-[#FF6B35]/40 font-semibold"
                   />
                 </div>
-              </div>
-
-              <div className="flex flex-col">
-                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Kitchen Address / Coordinates</label>
-                <textarea
-                  required
-                  placeholder="e.g. 21, Admiralty Road, Lekki Phase 1, Lagos"
-                  value={editRestAddress}
-                  onChange={(e) => setEditRestAddress(e.target.value)}
-                  className="bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-gray-800 outline-none h-14 focus:border-[#FF6B35]/40 font-semibold"
-                />
               </div>
 
               <div className="flex flex-col space-y-2 border border-gray-100 bg-gray-50/50 rounded-xl p-3">

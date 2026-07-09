@@ -514,62 +514,62 @@ async function sendBrevoEmail(toEmail: string, toName: string, otpCode: string):
       ],
       subject: `Your FoodHub Verification Code: ${otpCode}`,
       htmlContent: `
-        <div style="background-color: #fafafa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 40px 20px; margin: 0; min-height: 100%;">
-          <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 550px; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.04); border: 1px solid #f0f0f0;">
-            <!-- Brand Header Banner -->
+        <div style="background-color: #0b1511; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 50px 20px; margin: 0; min-height: 100%;">
+          <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 580px; background-color: #111e19; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.3); border: 1px solid #1f3529;">
+            <!-- Brand Header Banner with Premium Lagos Feel -->
             <tr>
-              <td style="background: linear-gradient(135deg, #FF6B35 0%, #FF8552 100%); padding: 40px 30px; text-align: center;">
+              <td style="background: linear-gradient(135deg, #064e3b 0%, #022c22 100%); padding: 45px 40px; text-align: center; border-bottom: 3px solid #10b981;">
                 <table align="center" border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
                   <tr>
-                    <td style="background-color: rgba(255, 255, 255, 0.2); border-radius: 14px; padding: 12px; display: inline-block;">
-                      <span style="font-size: 32px; line-height: 1; vertical-align: middle;">🍔</span>
+                    <td style="background-color: rgba(16, 185, 129, 0.15); border: 1.5px solid rgba(16, 185, 129, 0.3); border-radius: 20px; padding: 14px; display: inline-block; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                      <span style="font-size: 36px; line-height: 1; vertical-align: middle;">🍔</span>
                     </td>
                   </tr>
                 </table>
-                <h1 style="color: #ffffff; font-size: 28px; font-weight: 800; margin: 15px 0 5px 0; letter-spacing: -0.5px;">FoodHub</h1>
-                <p style="color: rgba(255, 255, 255, 0.9); font-size: 13px; font-weight: 600; margin: 0; text-transform: uppercase; letter-spacing: 1.5px;">Premium Lagos Culinary Delivery</p>
+                <h1 style="color: #ffffff; font-family: 'Space Grotesk', 'Inter', sans-serif; font-size: 32px; font-weight: 800; margin: 18px 0 6px 0; letter-spacing: -0.75px;">FoodHub</h1>
+                <p style="color: #10b981; font-size: 11px; font-weight: 700; margin: 0; text-transform: uppercase; letter-spacing: 2.5px;">Premium Lagos Culinary Delivery</p>
               </td>
             </tr>
             <!-- Content Body -->
             <tr>
-              <td style="padding: 40px 35px;">
-                <h2 style="color: #1a1a1a; font-size: 20px; font-weight: 700; margin-top: 0; margin-bottom: 12px;">Verify Your Email Address</h2>
-                <p style="color: #555555; font-size: 14px; line-height: 1.6; margin-top: 0; margin-bottom: 24px;">
-                  Hello <strong>${toName}</strong>,<br><br>
-                  Welcome to FoodHub! We are thrilled to have you join our exclusive culinary circle in Lagos. To activate your account and access rapid doorstep delivery, secure wallet options, and gourmet meals, please enter this secure 4-digit verification code:
+              <td style="padding: 45px 40px; background-color: #111e19;">
+                <h2 style="color: #ffffff; font-size: 22px; font-weight: 700; margin-top: 0; margin-bottom: 14px; letter-spacing: -0.3px;">Verify Your Email Address</h2>
+                <p style="color: #94a3b8; font-size: 14px; line-height: 1.65; margin-top: 0; margin-bottom: 28px;">
+                  Hello <strong style="color: #ffffff;">${toName}</strong>,<br><br>
+                  Welcome to FoodHub! We are thrilled to have you join our exclusive culinary circle in Lagos. To activate your account and access rapid doorstep delivery, secure virtual wallet options, and gourmet meals, please enter this secure 4-digit verification code:
                 </p>
                 
                 <!-- Code Display Container -->
-                <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 30px 0; background-color: #fff8f5; border: 1.5px dashed #ff9c75; border-radius: 16px;">
+                <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 35px 0; background-color: #064e3b; border: 2px dashed #10b981; border-radius: 20px;">
                   <tr>
-                    <td style="padding: 24px; text-align: center;">
-                      <span style="font-size: 11px; color: #ff6b35; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; display: block; margin-bottom: 8px;">Your OTP Verification Code</span>
-                      <span style="font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 44px; font-weight: 900; letter-spacing: 8px; color: #ff6b35; display: inline-block; line-height: 1;">${otpCode}</span>
+                    <td style="padding: 30px; text-align: center;">
+                      <span style="font-size: 11px; color: #34d399; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; display: block; margin-bottom: 10px;">Your OTP Verification Code</span>
+                      <span style="font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 48px; font-weight: 900; letter-spacing: 12px; color: #ffffff; display: inline-block; line-height: 1; text-shadow: 0 2px 10px rgba(16, 185, 129, 0.4);">${otpCode}</span>
                     </td>
                   </tr>
                 </table>
                 
                 <!-- Safety Advisory -->
-                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #fcfcfc; border-radius: 12px; border: 1px solid #f1f1f1; margin-bottom: 30px;">
+                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #162a21; border-radius: 16px; border: 1px solid #1f3d2f; margin-bottom: 35px;">
                   <tr>
-                    <td style="padding: 16px; color: #666666; font-size: 12px; line-height: 1.5;">
-                      🔒 <strong>Security Warning:</strong> This verification code expires in 15 minutes. For your security, never share this code with anyone. FoodHub support agents will never ask you for this code.
+                    <td style="padding: 18px; color: #a7f3d0; font-size: 12.5px; line-height: 1.6;">
+                      <span style="font-size: 16px; vertical-align: middle; margin-right: 6px;">🔒</span> <strong>Security Notice:</strong> This code is valid for 15 minutes. For your security, never share this code. FoodHub staff will never ask for your verification code.
                     </td>
                   </tr>
                 </table>
                 
-                <p style="color: #555555; font-size: 14px; line-height: 1.6; margin-bottom: 0;">
-                  If you did not initiate this registration, you can safely ignore this message. Your email address remains secure.
+                <p style="color: #64748b; font-size: 13px; line-height: 1.6; margin-bottom: 0;">
+                  If you did not initiate this registration, you can safely ignore this email. Your email address remains secure.
                 </p>
               </td>
             </tr>
             <!-- Footer Section -->
             <tr>
-              <td style="background-color: #fafafa; padding: 30px; text-align: center; border-top: 1px solid #f0f0f0;">
-                <p style="color: #999999; font-size: 11px; line-height: 1.5; margin: 0 0 10px 0;">
-                  This is an automated security transmission. Please do not reply directly to this email.
+              <td style="background-color: #0b1511; padding: 35px; text-align: center; border-top: 1px solid #1f3529;">
+                <p style="color: #64748b; font-size: 11px; line-height: 1.6; margin: 0 0 12px 0;">
+                  This is an automated transaction security transmission. Please do not reply to this email.
                 </p>
-                <p style="color: #bbbbbb; font-size: 11px; margin: 0;">
+                <p style="color: #475569; font-size: 11px; margin: 0; font-weight: 500;">
                   FoodHub Lagos • Plot 8, Admiralty Road, Lekki Phase 1, Lagos, Nigeria
                 </p>
               </td>

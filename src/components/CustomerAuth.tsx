@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, Lock, User, Phone, MapPin, Sparkles, ShieldCheck, Upload, Image, Trash2, Heart, Clock, Star, Utensils } from 'lucide-react';
-import { motion } from 'motion/react';
 import { CustomerAccount } from '../types';
 
 interface CustomerAuthProps {
@@ -590,10 +589,10 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
   const landingDishes = [
     {
       id: 'ld-1',
-      name: 'Spicy Seafood Okra Swallows 🍲',
+      name: 'Seafood Okra Supreme',
       category: 'soups',
       price: 12500,
-      time: '20 mins',
+      time: '15 mins',
       rating: 4.9,
       chef: "Nkechi's Lekki Kitchen",
       image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80',
@@ -601,10 +600,10 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
     },
     {
       id: 'ld-2',
-      name: 'Elite Lekki Smokey Jollof Rice 🍚',
+      name: 'Smoky Jollof Rice Feast',
       category: 'rice',
       price: 4500,
-      time: '15 mins',
+      time: '12 mins',
       rating: 5.0,
       chef: 'Mega Jollof & Grill',
       image: 'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?auto=format&fit=crop&w=600&q=80',
@@ -612,10 +611,10 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
     },
     {
       id: 'ld-3',
-      name: 'Charcoal Roasted Peppered Suya 🥩',
+      name: 'Traditional Suya Platter',
       category: 'grills',
       price: 6000,
-      time: '12 mins',
+      time: '18 mins',
       rating: 4.8,
       chef: 'Alhaji Suya Spot (Ikeja)',
       image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=600&q=80',
@@ -623,7 +622,7 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
     },
     {
       id: 'ld-4',
-      name: 'Gourmet Double Beef Burger 🍔',
+      name: 'Double Cheese Smasher',
       category: 'dessert',
       price: 7500,
       time: '10 mins',
@@ -636,19 +635,21 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
 
   const handleToggleLike = (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const isLiked = likedDishes[id];
-    setLikedDishes(prev => ({ ...prev, [id]: !isLiked }));
-    setDishLikes(prev => ({
-      ...prev,
-      [id]: isLiked ? prev[id] - 1 : prev[id] + 1
-    }));
+    setLikedDishes(prev => {
+      const next = { ...prev, [id]: !prev[id] };
+      setDishLikes(likes => ({
+        ...likes,
+        [id]: next[id] ? (likes[id] || 0) + 1 : Math.max(0, (likes[id] || 0) - 1)
+      }));
+      return next;
+    });
   };
 
   return (
     <div className="relative overflow-hidden bg-gradient-to-br from-[#FAF6ED] via-[#FCFAF5] to-[#E2F1EB] min-h-[calc(100vh-80px)] py-8 lg:py-16">
       {/* Decorative ambient elements for realistic depth */}
-      <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-emerald-500/5 rounded-full filter blur-3xl pointer-events-none" />
-      <div className="absolute bottom-10 right-1/4 w-[600px] h-[600px] bg-amber-500/5 rounded-full filter blur-3xl pointer-events-none" />
+      <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-emerald-50/5 rounded-full filter blur-3xl pointer-events-none" />
+      <div className="absolute bottom-10 right-1/4 w-[600px] h-[600px] bg-amber-50/5 rounded-full filter blur-3xl pointer-events-none" />
       
       <div className="max-w-7xl mx-auto px-4 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
@@ -717,8 +718,7 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
               <div className="flex flex-wrap gap-1.5">
                 {[
                   { id: 'all', label: 'All 🍲' },
-                  { id: 'soups', label: 'Soups 🥣' },
-                  { id: 'rice', label: 'Rice 🍚' },
+                  { id: 'rice', label: 'Rice Dishes 🍚' },
                   { id: 'grills', label: 'Grills 🥩' },
                   { id: 'dessert', label: 'Comfort 🍔' }
                 ].map(cat => (
@@ -774,7 +774,6 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
                           ₦{dish.price.toLocaleString()}
                         </span>
 
-                        {/* Interactive Love Button */}
                         <button
                           type="button"
                           onClick={(e) => handleToggleLike(dish.id, e)}
@@ -828,7 +827,7 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
               <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
               <span>{showVerification ? "Secured Account Verification" : "Secured Live Customer Hub"}</span>
             </div>
-            <h2 className="text-2xl font-black tracking-tight text-emerald-950">
+            <h2 className="text-2xl font-black tracking-tight text-neutral-900">
               {showVerification ? "Verify Email" : "Access Account"}
             </h2>
             <p className="text-xs text-gray-400 font-semibold mt-1">
