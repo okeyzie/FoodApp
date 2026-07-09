@@ -496,7 +496,8 @@ async function sendBrevoEmail(toEmail: string, toName: string, otpCode: string):
     return false;
   }
 
-  const senderEmail = process.env.BREVO_SENDER_EMAIL || "no-reply@foodhub.com";
+  // Smart default sender: use leookeyzie@gmail.com if not specified, since it's the customer's email and highly likely verified in Brevo.
+  const senderEmail = process.env.BREVO_SENDER_EMAIL || "leookeyzie@gmail.com";
   const senderName = process.env.BREVO_SENDER_NAME || "FoodHub App";
 
   try {
@@ -513,33 +514,67 @@ async function sendBrevoEmail(toEmail: string, toName: string, otpCode: string):
       ],
       subject: `Your FoodHub Verification Code: ${otpCode}`,
       htmlContent: `
-        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #ffffff; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
-          <div style="text-align: center; margin-bottom: 24px;">
-            <span style="font-size: 32px;">🇳🇬</span>
-            <h1 style="color: #065f46; font-size: 24px; font-weight: 800; margin-top: 8px; margin-bottom: 4px; letter-spacing: -0.5px;">FoodHub App</h1>
-            <p style="color: #047857; font-size: 12px; font-weight: bold; margin: 0; text-transform: uppercase; tracking-wider: 0.1em;">Lagos No. 1 Fine Dining App</p>
-          </div>
-          
-          <hr style="border: 0; border-top: 1px solid #f1f5f9; margin-bottom: 24px;" />
-          
-          <h2 style="color: #1e293b; font-size: 18px; font-weight: 700; margin-bottom: 12px;">Hello ${toName},</h2>
-          <p style="color: #475569; font-size: 14px; line-height: 1.6; margin-bottom: 20px;">
-            Thank you for registering on FoodHub! To complete your registration and secure your Lagos culinary experience, please verify your email using the following 4-digit code:
-          </p>
-          
-          <div style="background-color: #f0fdf4; border: 1px solid #dcfce7; text-align: center; padding: 24px; margin: 24px 0; border-radius: 12px;">
-            <span style="font-family: 'Courier New', monospace; font-size: 36px; font-weight: 900; letter-spacing: 10px; color: #166534; display: inline-block;">${otpCode}</span>
-          </div>
-          
-          <p style="color: #64748b; font-size: 13px; line-height: 1.5; margin-bottom: 24px;">
-            Please enter this code on the verification screen to instantly access your live profile, fund your secure wallet, and browse delicious offerings.
-          </p>
-          
-          <hr style="border: 0; border-top: 1px solid #f1f5f9; margin-top: 24px; margin-bottom: 20px;" />
-          
-          <p style="color: #94a3b8; font-size: 11px; text-align: center; margin: 0; line-height: 1.4;">
-            This email was sent to ${toEmail}. If you did not sign up for FoodHub, you can safely ignore this email.
-          </p>
+        <div style="background-color: #fafafa; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 40px 20px; margin: 0; min-height: 100%;">
+          <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 550px; background-color: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.04); border: 1px solid #f0f0f0;">
+            <!-- Brand Header Banner -->
+            <tr>
+              <td style="background: linear-gradient(135deg, #FF6B35 0%, #FF8552 100%); padding: 40px 30px; text-align: center;">
+                <table align="center" border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                  <tr>
+                    <td style="background-color: rgba(255, 255, 255, 0.2); border-radius: 14px; padding: 12px; display: inline-block;">
+                      <span style="font-size: 32px; line-height: 1; vertical-align: middle;">🍔</span>
+                    </td>
+                  </tr>
+                </table>
+                <h1 style="color: #ffffff; font-size: 28px; font-weight: 800; margin: 15px 0 5px 0; letter-spacing: -0.5px;">FoodHub</h1>
+                <p style="color: rgba(255, 255, 255, 0.9); font-size: 13px; font-weight: 600; margin: 0; text-transform: uppercase; letter-spacing: 1.5px;">Premium Lagos Culinary Delivery</p>
+              </td>
+            </tr>
+            <!-- Content Body -->
+            <tr>
+              <td style="padding: 40px 35px;">
+                <h2 style="color: #1a1a1a; font-size: 20px; font-weight: 700; margin-top: 0; margin-bottom: 12px;">Verify Your Email Address</h2>
+                <p style="color: #555555; font-size: 14px; line-height: 1.6; margin-top: 0; margin-bottom: 24px;">
+                  Hello <strong>${toName}</strong>,<br><br>
+                  Welcome to FoodHub! We are thrilled to have you join our exclusive culinary circle in Lagos. To activate your account and access rapid doorstep delivery, secure wallet options, and gourmet meals, please enter this secure 4-digit verification code:
+                </p>
+                
+                <!-- Code Display Container -->
+                <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 30px 0; background-color: #fff8f5; border: 1.5px dashed #ff9c75; border-radius: 16px;">
+                  <tr>
+                    <td style="padding: 24px; text-align: center;">
+                      <span style="font-size: 11px; color: #ff6b35; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; display: block; margin-bottom: 8px;">Your OTP Verification Code</span>
+                      <span style="font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 44px; font-weight: 900; letter-spacing: 8px; color: #ff6b35; display: inline-block; line-height: 1;">${otpCode}</span>
+                    </td>
+                  </tr>
+                </table>
+                
+                <!-- Safety Advisory -->
+                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #fcfcfc; border-radius: 12px; border: 1px solid #f1f1f1; margin-bottom: 30px;">
+                  <tr>
+                    <td style="padding: 16px; color: #666666; font-size: 12px; line-height: 1.5;">
+                      🔒 <strong>Security Warning:</strong> This verification code expires in 15 minutes. For your security, never share this code with anyone. FoodHub support agents will never ask you for this code.
+                    </td>
+                  </tr>
+                </table>
+                
+                <p style="color: #555555; font-size: 14px; line-height: 1.6; margin-bottom: 0;">
+                  If you did not initiate this registration, you can safely ignore this message. Your email address remains secure.
+                </p>
+              </td>
+            </tr>
+            <!-- Footer Section -->
+            <tr>
+              <td style="background-color: #fafafa; padding: 30px; text-align: center; border-top: 1px solid #f0f0f0;">
+                <p style="color: #999999; font-size: 11px; line-height: 1.5; margin: 0 0 10px 0;">
+                  This is an automated security transmission. Please do not reply directly to this email.
+                </p>
+                <p style="color: #bbbbbb; font-size: 11px; margin: 0;">
+                  FoodHub Lagos • Plot 8, Admiralty Road, Lekki Phase 1, Lagos, Nigeria
+                </p>
+              </td>
+            </tr>
+          </table>
         </div>
       `
     };
@@ -556,11 +591,11 @@ async function sendBrevoEmail(toEmail: string, toName: string, otpCode: string):
 
     if (!res.ok) {
       const errorResponse = await res.text();
-      console.error(`Brevo email sending failed for ${toEmail}: ${res.status} - ${errorResponse}`);
+      console.error(`Brevo email sending failed for ${toEmail} using sender ${senderEmail}: ${res.status} - ${errorResponse}`);
       return false;
     }
 
-    console.log(`Real OTP verification email successfully dispatched to ${toEmail} using Brevo!`);
+    console.log(`Real OTP verification email successfully dispatched to ${toEmail} using Brevo with sender ${senderEmail}!`);
     return true;
   } catch (error) {
     console.error(`Error encountered while dispatching Brevo email to ${toEmail}:`, error);

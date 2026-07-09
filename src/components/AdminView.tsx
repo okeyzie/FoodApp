@@ -380,10 +380,23 @@ export default function AdminView({
                         onChange={(e) => setRestCuisine(e.target.value)}
                         className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 outline-none focus:border-[#FF6B35]/40 font-semibold text-gray-700"
                       >
-                        <option value="Nigerian Jollof">Nigerian Jollof & Grill</option>
-                        <option value="Suya & Kebab">Smoky Suya & Kebab</option>
-                        <option value="Gourmet Burgers">Gourmet Burgers</option>
-                        <option value="Asian Fusion">Asian Fusion / Sushi</option>
+                        <option value="Nigerian Jollof">Nigerian Jollof & Fried Plantain</option>
+                        <option value="Suya & Kebab">Smoky Suya & Grill</option>
+                        <option value="Egusi & Pounded Yam">Egusi Soup & Pounded Yam</option>
+                        <option value="Amala & Abula">Amala, Ewedu & Gbegiri</option>
+                        <option value="Ofada Rice & Ayamase">Ofada Rice & Ayamase Stew</option>
+                        <option value="Efo Riro & Semovita">Efo Riro & Semovita / Eba</option>
+                        <option value="Asun & Peppersoup">Asun & Spicy Assorted Peppersoup</option>
+                        <option value="Bole & Fish">Bole & Roasted Fish (Lagos Style)</option>
+                        <option value="Akara & Pap">Akara & Pap / Custard</option>
+                        <option value="Puff Puff & Chin Chin">Puff Puff, Chin Chin & local snacks</option>
+                        <option value="Nigerian Meat Pie">Nigerian Meat Pie & Egg Rolls</option>
+                        <option value="Abacha & Ugba">Abacha & Ugba (African Salad)</option>
+                        <option value="Nkwobi & Isi Ewu">Spicy Nkwobi & Isi Ewu</option>
+                        <option value="Edikaikong & Afang">Edikaikong & Afang Soups</option>
+                        <option value="Kilishi & Kuli Kuli">Kilishi & Kuli Kuli snacks</option>
+                        <option value="Gourmet Burgers">Gourmet Burgers & Fries</option>
+                        <option value="Asian Fusion">Asian Fusion & Sushi</option>
                         <option value="Healthy Bowls">Healthy Bowls & Salads</option>
                         <option value="Continental">Continental Desserts</option>
                       </select>
