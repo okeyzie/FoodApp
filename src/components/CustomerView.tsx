@@ -121,6 +121,7 @@ export default function CustomerView({
     { id: 'Sushi Rolls', emoji: '🍣' },
     { id: 'Woodfired Pizza', emoji: '🍕' },
     { id: 'Rice Dishes', emoji: '🍚' },
+    { id: 'Nigeria Local Meals', emoji: '🇳🇬' },
     { id: 'Sides', emoji: '🍟' },
   ];
 

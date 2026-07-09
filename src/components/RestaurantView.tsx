@@ -737,6 +737,7 @@ export default function RestaurantView({
                     <option value="Sushi Rolls">Sushi Rolls</option>
                     <option value="Woodfired Pizza">Pizza</option>
                     <option value="Rice Dishes">Rice Dishes</option>
+                    <option value="Nigeria Local Meals">Nigeria Local Meals</option>
                     <option value="Sides">Sides</option>
                     <option value="Drinks">Drinks</option>
                   </select>

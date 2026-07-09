@@ -122,6 +122,7 @@ export default function SalesGrowthChart({ orders, menuItems }: SalesGrowthChart
       'Grills': { name: '🥩 Traditional Suya Grills', value: 26, revenue: 78000 },
       'Soups': { name: '🍲 Seafood Okra & Soups', value: 15, revenue: 187500 },
       'Drinks': { name: '🥤 Desserts & Drinks', value: 22, revenue: 48400 },
+      'Nigeria Local Meals': { name: '🇳🇬 Nigeria Local Meals', value: 12, revenue: 42000 },
     };
 
     // Parse items inside orders
@@ -143,6 +144,7 @@ export default function SalesGrowthChart({ orders, menuItems }: SalesGrowthChart
           else if (name.includes('soup') || name.includes('okra') || name.includes('seafood') || name.includes('broth')) category = 'Soups';
           else if (name.includes('burger') || name.includes('patty') || name.includes('smasher')) category = 'Burgers';
           else if (name.includes('drink') || name.includes('shake') || name.includes('soda') || name.includes('beverage')) category = 'Drinks';
+          else if (name.includes('local') || name.includes('nigeria') || name.includes('yam') || name.includes('egusi') || name.includes('amala') || name.includes('bole')) category = 'Nigeria Local Meals';
         }
 
         // Standardize keys
@@ -151,6 +153,7 @@ export default function SalesGrowthChart({ orders, menuItems }: SalesGrowthChart
         else if (category.toLowerCase().includes('grill') || category.toLowerCase().includes('suya')) catKey = 'Grills';
         else if (category.toLowerCase().includes('soup') || category.toLowerCase().includes('okra')) catKey = 'Soups';
         else if (category.toLowerCase().includes('drink') || category.toLowerCase().includes('shake') || category.toLowerCase().includes('dessert')) catKey = 'Drinks';
+        else if (category.toLowerCase().includes('local') || category.toLowerCase().includes('nigeria') || category.toLowerCase().includes('yam') || category.toLowerCase().includes('egusi') || category.toLowerCase().includes('amala') || category.toLowerCase().includes('bole')) catKey = 'Nigeria Local Meals';
 
         if (catMap[catKey]) {
           catMap[catKey].value += item.quantity;
