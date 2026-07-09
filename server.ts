@@ -572,9 +572,101 @@ async function sendBrevoEmail(toEmail: string, toName: string, otpCode: string):
 let db = loadDatabase();
 
 // Middleware
-app.use(express.json());
+app.use(express.json({ limit: "50mb" }));
+app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+// Local in-memory cache of uploaded images for offline/local fallback
+const localImagesCache = new Map<string, { data: string; contentType: string }>();
 
 // API Endpoints
+// GET endpoint to serve images stored in MongoDB (or local cache fallback) with correct Content-Type header
+app.get("/api/images/:id", async (req, res) => {
+  const imageId = req.params.id;
+  try {
+    // 1. Check local in-memory cache first
+    let imgDoc = localImagesCache.get(imageId);
+
+    // 2. If not found and MongoDB is active, look up in 'stored_images' collection
+    if (!imgDoc && mongoDbConnected && mongoClient) {
+      const dbInstance = mongoClient.db();
+      const imagesCollection = dbInstance.collection("stored_images");
+      const doc = await imagesCollection.findOne({ _id: imageId });
+      if (doc) {
+        imgDoc = { data: doc.data, contentType: doc.contentType };
+        // Save to cache for high-speed subsequent queries
+        localImagesCache.set(imageId, imgDoc);
+      }
+    }
+
+    if (imgDoc) {
+      const base64Data = imgDoc.data.split(",")[1] || imgDoc.data;
+      const imgBuffer = Buffer.from(base64Data, "base64");
+      res.setHeader("Content-Type", imgDoc.contentType || "image/jpeg");
+      res.setHeader("Cache-Control", "public, max-age=31536000"); // Cache for 1 year
+      return res.send(imgBuffer);
+    }
+
+    // 3. Fallback placeholder if not found
+    return res.redirect("https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80");
+  } catch (error) {
+    console.error(`Error retrieving/serving image ${imageId}:`, error);
+    return res.status(500).json({ error: "Failed to load image" });
+  }
+});
+
+// POST endpoint to upload a base64 image and save it directly into MongoDB 'stored_images' collection
+app.post("/api/upload-image", async (req, res) => {
+  try {
+    const { image } = req.body;
+    if (!image || typeof image !== "string") {
+      return res.status(400).json({ error: "No image data provided" });
+    }
+
+    // Capture MIME Content-Type from Data URI (e.g., data:image/png;base64,...)
+    let contentType = "image/jpeg";
+    const matches = image.match(/^data:([^;]+);base64,/);
+    if (matches && matches.length > 1) {
+      contentType = matches[1];
+    }
+
+    // Generate lightweight unique handle
+    const imageId = `img-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+    const imageDoc = {
+      _id: imageId,
+      data: image,
+      contentType,
+      createdAt: new Date().toISOString()
+    };
+
+    // Cache locally
+    localImagesCache.set(imageId, { data: image, contentType });
+
+    // Store in MongoDB 'stored_images' collection if connection is active
+    if (mongoDbConnected && mongoClient) {
+      const dbInstance = mongoClient.db();
+      const imagesCollection = dbInstance.collection("stored_images");
+      await imagesCollection.updateOne(
+        { _id: imageId },
+        { $set: imageDoc },
+        { upsert: true }
+      );
+      console.log(`Successfully stored image ${imageId} inside MongoDB 'stored_images' collection!`);
+    } else {
+      console.warn(`MongoDB is not active. Image ${imageId} stored inside local cache fallback only.`);
+    }
+
+    return res.status(201).json({
+      success: true,
+      id: imageId,
+      url: `/api/images/${imageId}`
+    });
+  } catch (err) {
+    console.error("Error encountered while uploading image to MongoDB:", err);
+    return res.status(500).json({ error: "Internal server error uploading image" });
+  }
+});
+
 app.get("/api/state", (req, res) => {
   res.json(db);
 });

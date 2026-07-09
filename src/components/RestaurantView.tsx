@@ -346,9 +346,24 @@ export default function RestaurantView({
                               const file = e.target.files?.[0];
                               if (file) {
                                 const reader = new FileReader();
-                                reader.onloadend = () => {
+                                reader.onloadend = async () => {
                                   if (typeof reader.result === 'string') {
-                                    onUpdateMenuItem(item.id, { image: reader.result });
+                                    try {
+                                      const uploadRes = await fetch('/api/upload-image', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ image: reader.result })
+                                      });
+                                      if (uploadRes.ok) {
+                                        const uploadData = await uploadRes.json();
+                                        onUpdateMenuItem(item.id, { image: uploadData.url });
+                                      } else {
+                                        onUpdateMenuItem(item.id, { image: reader.result });
+                                      }
+                                    } catch (err) {
+                                      console.error("Failed to upload image:", err);
+                                      onUpdateMenuItem(item.id, { image: reader.result });
+                                    }
                                   }
                                 };
                                 reader.readAsDataURL(file);
@@ -702,9 +717,24 @@ export default function RestaurantView({
                           const file = e.target.files?.[0];
                           if (file) {
                             const reader = new FileReader();
-                            reader.onloadend = () => {
+                            reader.onloadend = async () => {
                               if (typeof reader.result === 'string') {
-                                setNewFoodImage(reader.result);
+                                try {
+                                  const uploadRes = await fetch('/api/upload-image', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ image: reader.result })
+                                  });
+                                  if (uploadRes.ok) {
+                                    const uploadData = await uploadRes.json();
+                                    setNewFoodImage(uploadData.url);
+                                  } else {
+                                    setNewFoodImage(reader.result);
+                                  }
+                                } catch (err) {
+                                  console.error("Failed to upload image:", err);
+                                  setNewFoodImage(reader.result);
+                                }
                               }
                             };
                             reader.readAsDataURL(file);

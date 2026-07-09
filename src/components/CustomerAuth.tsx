@@ -50,8 +50,25 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
         return;
       }
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setSignUpAvatar(reader.result as string);
+      reader.onloadend = async () => {
+        if (typeof reader.result === 'string') {
+          try {
+            const uploadRes = await fetch('/api/upload-image', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ image: reader.result })
+            });
+            if (uploadRes.ok) {
+              const uploadData = await uploadRes.json();
+              setSignUpAvatar(uploadData.url);
+            } else {
+              setSignUpAvatar(reader.result);
+            }
+          } catch (err) {
+            console.error("Failed to upload avatar:", err);
+            setSignUpAvatar(reader.result);
+          }
+        }
       };
       reader.readAsDataURL(file);
     }
@@ -80,8 +97,25 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
         return;
       }
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setSignUpAvatar(reader.result as string);
+      reader.onloadend = async () => {
+        if (typeof reader.result === 'string') {
+          try {
+            const uploadRes = await fetch('/api/upload-image', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ image: reader.result })
+            });
+            if (uploadRes.ok) {
+              const uploadData = await uploadRes.json();
+              setSignUpAvatar(uploadData.url);
+            } else {
+              setSignUpAvatar(reader.result);
+            }
+          } catch (err) {
+            console.error("Failed to upload avatar:", err);
+            setSignUpAvatar(reader.result);
+          }
+        }
       };
       reader.readAsDataURL(file);
     }
