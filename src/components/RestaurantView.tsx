@@ -54,6 +54,16 @@ export default function RestaurantView({
   const [newFoodCategory, setNewFoodCategory] = useState('Burgers');
   const [newFoodImage, setNewFoodImage] = useState('https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80');
 
+  // Edit Restaurant modal states
+  const [showEditRestModal, setShowEditRestModal] = useState(false);
+  const [editRestName, setEditRestName] = useState('');
+  const [editRestCuisine, setEditRestCuisine] = useState('');
+  const [editRestDeliveryFee, setEditRestDeliveryFee] = useState('');
+  const [editRestAddress, setEditRestAddress] = useState('');
+  const [editRestHours, setEditRestHours] = useState('');
+  const [editRestContact, setEditRestContact] = useState('');
+  const [editRestImage, setEditRestImage] = useState('');
+
   // Find active restaurant profile
   const restaurant = restaurants.find(r => r.id === activeRestId) || restaurants[0];
 
@@ -86,6 +96,36 @@ export default function RestaurantView({
     await onUpdateRestaurant(activeRestId, { [field]: value });
   };
 
+  const openEditRestModal = () => {
+    if (restaurant) {
+      setEditRestName(restaurant.name || '');
+      setEditRestCuisine(restaurant.cuisine || 'Nigerian Jollof & Fried Plantain');
+      setEditRestDeliveryFee(String(restaurant.deliveryFee || 500));
+      setEditRestAddress(restaurant.address || '');
+      setEditRestHours(restaurant.operatingHours || '');
+      setEditRestContact(restaurant.contactNumber || '');
+      setEditRestImage(restaurant.image || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80');
+      setShowEditRestModal(true);
+    }
+  };
+
+  const handleEditRestSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!restaurant) return;
+
+    await onUpdateRestaurant(restaurant.id, {
+      name: editRestName,
+      cuisine: editRestCuisine,
+      deliveryFee: parseFloat(editRestDeliveryFee) || 0,
+      address: editRestAddress,
+      operatingHours: editRestHours,
+      contactNumber: editRestContact,
+      image: editRestImage
+    });
+
+    setShowEditRestModal(false);
+  };
+
   // Filter orders for this restaurant
   const restOrders = orders.filter(o => o.restaurantId === activeRestId);
   const incomingOrders = restOrders.filter(o => o.status === 'Order Received');
@@ -103,20 +143,29 @@ export default function RestaurantView({
         
         {/* Quick Restaurant Switcher Panel */}
         <div className="flex flex-col md:flex-row md:items-center justify-between bg-white border border-gray-200 p-4 rounded-2xl gap-4 shadow-sm mb-6">
-          <div className="flex items-center gap-3">
-            <Store className="w-5 h-5 text-[#FF6B35]" />
-            <div>
-              <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Managing Restaurant</label>
-              <select
-                value={activeRestId}
-                onChange={(e) => setActiveRestId(e.target.value)}
-                className="bg-transparent text-sm font-bold text-gray-800 outline-none cursor-pointer pr-4"
-              >
-                {restaurants.map(r => (
-                  <option key={r.id} value={r.id} className="bg-white text-gray-800 font-semibold">{r.name}</option>
-                ))}
-              </select>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-center gap-3">
+              <Store className="w-5 h-5 text-[#FF6B35]" />
+              <div>
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">Managing Restaurant</label>
+                <select
+                  value={activeRestId}
+                  onChange={(e) => setActiveRestId(e.target.value)}
+                  className="bg-transparent text-sm font-bold text-gray-800 outline-none cursor-pointer pr-4"
+                >
+                  {restaurants.map(r => (
+                    <option key={r.id} value={r.id} className="bg-white text-gray-800 font-semibold">{r.name}</option>
+                  ))}
+                </select>
+              </div>
             </div>
+
+            <button
+              onClick={openEditRestModal}
+              className="px-3.5 py-1.5 bg-[#FF6B35]/10 hover:bg-[#FF6B35]/25 text-[#FF6B35] border border-[#FF6B35]/20 hover:border-[#FF6B35]/40 text-[11px] font-extrabold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer ml-0 sm:ml-4 shadow-xs"
+            >
+              <span>✏️</span> Edit Restaurant Settings
+            </button>
           </div>
 
           {/* Core Analytics Quick Stats */}
@@ -760,6 +809,199 @@ export default function RestaurantView({
                 className="w-full py-2.5 bg-[#FF6B35] hover:bg-[#E55A2B] text-white font-bold rounded-xl text-xs transition-colors shadow-sm mt-2"
               >
                 Launch Meal live
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT RESTAURANT MODAL */}
+      {showEditRestModal && (
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <div className="w-full max-w-lg bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-xl text-gray-700">
+            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <div className="flex items-center gap-2">
+                <span className="text-lg">🏪</span>
+                <div>
+                  <h4 className="text-sm font-black text-gray-800">Edit Restaurant Settings</h4>
+                  <p className="text-[10px] text-gray-400">Configure client metadata, coordinates, and branding cover</p>
+                </div>
+              </div>
+              <button onClick={() => setShowEditRestModal(false)} className="text-gray-400 hover:text-gray-600 cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleEditRestSubmit} className="p-5 space-y-4 text-xs">
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Restaurant Name</label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="e.g. Lagos Pepper Kitchen"
+                    value={editRestName}
+                    onChange={(e) => setEditRestName(e.target.value)}
+                    className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-800 outline-none focus:border-[#FF6B35]/40 font-semibold"
+                  />
+                </div>
+
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Cuisine Category</label>
+                  <select
+                    value={editRestCuisine}
+                    onChange={(e) => setEditRestCuisine(e.target.value)}
+                    className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-800 outline-none focus:border-[#FF6B35]/40 font-bold"
+                  >
+                    <option value="Nigerian Jollof & Fried Plantain">Nigerian Jollof & Fried Plantain</option>
+                    <option value="Smoky Suya & Grill">Smoky Suya & Grill</option>
+                    <option value="Egusi Soup & Pounded Yam">Egusi Soup & Pounded Yam</option>
+                    <option value="Amala, Ewedu & Gbegiri">Amala, Ewedu & Gbegiri</option>
+                    <option value="Ofada Rice & Ayamase Stew">Ofada Rice & Ayamase Stew</option>
+                    <option value="Efo Riro & Semovita / Eba">Efo Riro & Semovita / Eba</option>
+                    <option value="Asun & Spicy Assorted Peppersoup">Asun & Spicy Assorted Peppersoup</option>
+                    <option value="Bole & Roasted Fish (Lagos Style)">Bole & Roasted Fish (Lagos Style)</option>
+                    <option value="Akara & Pap / Custard">Akara & Pap / Custard</option>
+                    <option value="Puff Puff, Chin Chin & local snacks">Puff Puff, Chin Chin & local snacks</option>
+                    <option value="Nigerian Meat Pie & Egg Rolls">Nigerian Meat Pie & Egg Rolls</option>
+                    <option value="Abacha & Ugba (African Salad)">Abacha & Ugba (African Salad)</option>
+                    <option value="Spicy Nkwobi & Isi Ewu">Spicy Nkwobi & Isi Ewu</option>
+                    <option value="Edikaikong & Afang Soups">Edikaikong & Afang Soups</option>
+                    <option value="Kilishi & Kuli Kuli snacks">Kilishi & Kuli Kuli snacks</option>
+                    <option value="Gourmet Burgers & Fries">Gourmet Burgers & Fries</option>
+                    <option value="Asian Fusion & Sushi">Asian Fusion & Sushi</option>
+                    <option value="Healthy Bowls & Salads">Healthy Bowls & Salads</option>
+                    <option value="Continental Desserts">Continental Desserts</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Delivery Fee (₦)</label>
+                  <input
+                    required
+                    type="number"
+                    placeholder="500"
+                    value={editRestDeliveryFee}
+                    onChange={(e) => setEditRestDeliveryFee(e.target.value)}
+                    className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-800 outline-none focus:border-[#FF6B35]/40 font-semibold"
+                  />
+                </div>
+
+                <div className="flex flex-col">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Contact Telephone</label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="e.g. +234 811 222 3333"
+                    value={editRestContact}
+                    onChange={(e) => setEditRestContact(e.target.value)}
+                    className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-800 outline-none focus:border-[#FF6B35]/40 font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col col-span-2">
+                  <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Operating Hours</label>
+                  <input
+                    required
+                    type="text"
+                    placeholder="e.g. 08:00 AM - 10:00 PM"
+                    value={editRestHours}
+                    onChange={(e) => setEditRestHours(e.target.value)}
+                    className="bg-white border border-gray-200 rounded-lg px-3 py-2 text-gray-800 outline-none focus:border-[#FF6B35]/40 font-semibold"
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-col">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Kitchen Address / Coordinates</label>
+                <textarea
+                  required
+                  placeholder="e.g. 21, Admiralty Road, Lekki Phase 1, Lagos"
+                  value={editRestAddress}
+                  onChange={(e) => setEditRestAddress(e.target.value)}
+                  className="bg-white border border-gray-200 rounded-lg px-3 py-1.5 text-gray-800 outline-none h-14 focus:border-[#FF6B35]/40 font-semibold"
+                />
+              </div>
+
+              <div className="flex flex-col space-y-2 border border-gray-100 bg-gray-50/50 rounded-xl p-3">
+                <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Restaurant Cover Banner Image</label>
+                <div className="flex items-center gap-3.5">
+                  <div className="w-14 h-14 rounded-lg border border-gray-200 overflow-hidden bg-white flex-shrink-0 relative">
+                    <img
+                      src={editRestImage}
+                      alt="Restaurant Preview"
+                      className="w-full h-full object-cover"
+                      referrerPolicy="no-referrer"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <label className="flex flex-col items-center justify-center border border-dashed border-gray-300 hover:border-[#FF6B35] bg-white rounded-lg py-2 px-3 cursor-pointer transition-colors text-[10px] text-gray-500 hover:text-[#FF6B35] font-semibold text-center">
+                      <Upload className="w-4 h-4 mb-0.5" />
+                      <span>Upload Banner Image</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onloadend = async () => {
+                              if (typeof reader.result === 'string') {
+                                try {
+                                  const uploadRes = await fetch('/api/upload-image', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ image: reader.result })
+                                  });
+                                  if (uploadRes.ok) {
+                                    const uploadData = await uploadRes.json();
+                                    setEditRestImage(uploadData.url);
+                                  } else {
+                                    setEditRestImage(reader.result);
+                                  }
+                                } catch (err) {
+                                  console.error("Failed to upload image:", err);
+                                  setEditRestImage(reader.result);
+                                }
+                              }
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </label>
+                  </div>
+                </div>
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Or paste custom banner image URL..."
+                    value={editRestImage.startsWith('data:') ? '' : editRestImage}
+                    onChange={(e) => setEditRestImage(e.target.value || 'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=800&q=80')}
+                    className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-[10px] text-gray-700 outline-none focus:border-[#FF6B35]/40"
+                  />
+                </div>
+              </div>
+
+              {/* Quick info section about meals catalog management */}
+              <div className="bg-orange-50 border border-orange-100 p-3 rounded-xl">
+                <p className="text-[10px] font-bold text-orange-800 uppercase tracking-wider">💡 Tip for meals, snacks and local dishes</p>
+                <p className="text-[10px] text-orange-700 mt-0.5">
+                  To add dishes, upload snack images, and update specific prices, select the **"Menu Catalog"** tab in the main hub workspace.
+                </p>
+              </div>
+
+              <button
+                type="submit"
+                className="w-full py-2.5 bg-[#FF6B35] hover:bg-[#E55A2B] text-white font-extrabold rounded-xl text-xs transition-colors shadow-sm cursor-pointer"
+              >
+                Save & Apply Changes
               </button>
             </form>
           </div>
