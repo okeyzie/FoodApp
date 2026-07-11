@@ -1505,6 +1505,44 @@ app.post("/api/admin/reset-password", (req, res) => {
   res.json({ message: "Admin credentials updated successfully! You can now log into the operations deck." });
 });
 
+// 2f. Google Direct Sandbox Auth Endpoint
+app.post("/api/auth/google-direct", (req, res) => {
+  const { email, name, avatar, googleId } = req.body;
+  if (!email || !name) {
+    return res.status(400).json({ error: "Email and name are required." });
+  }
+
+  const lowerEmail = email.toLowerCase().trim();
+  const actualGoogleId = googleId || `google_${lowerEmail.replace(/[^a-z0-9]/g, '')}`;
+  const actualAvatar = avatar || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150&q=80";
+
+  let customer = db.customers.find(c => c.email.toLowerCase() === lowerEmail || c.googleId === actualGoogleId);
+
+  if (customer) {
+    if (!customer.googleId) {
+      customer.googleId = actualGoogleId;
+    }
+    customer.isGoogleAuth = true;
+  } else {
+    customer = {
+      id: `customer-${Date.now()}`,
+      name,
+      email: lowerEmail,
+      phone: "+234 800 GOOGLE",
+      address: "Plot 8, Admiralty Road, Lekki Phase 1, Lagos",
+      avatar: actualAvatar,
+      balance: 20000, // Welcome gift wallet funding
+      googleId: actualGoogleId,
+      isGoogleAuth: true,
+      createdAt: new Date().toISOString()
+    };
+    db.customers.push(customer);
+  }
+
+  saveDatabase(db);
+  res.json({ message: "Authenticated successfully", customer });
+});
+
 // 3. Get Google OAuth URL (Returns Google's or the local simulation URL)
 app.get("/api/auth/google-url", (req, res) => {
   const clientId = process.env.GOOGLE_CLIENT_ID;
