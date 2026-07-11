@@ -356,17 +356,29 @@ export default function CustomerView({
   };
 
   const handleCheckout = async () => {
-    if (!selectedRestaurant || cart.length === 0) return;
+    let rest = selectedRestaurant;
+    if (!rest && cart.length > 0) {
+      const firstItem = cart[0];
+      const mItem = menuItems.find(m => m.id === firstItem.menuItemId);
+      if (mItem) {
+        rest = restaurants.find(r => r.id === mItem.restaurantId) || null;
+      }
+    }
+
+    if (!rest || cart.length === 0) {
+      alert("Please select a restaurant or add items from a restaurant menu first.");
+      return;
+    }
     
     try {
       const order = await onPlaceOrder({
         customerId: activeCustomer?.id || 'customer-1',
         customerName: activeCustomer?.name || 'Anonymous',
         customerPhone: activeCustomer?.phone || '+234 800 000 0000',
-        restaurantId: selectedRestaurant.id,
-        restaurantName: selectedRestaurant.name,
+        restaurantId: rest.id,
+        restaurantName: rest.name,
         items: cart,
-        deliveryFee: selectedRestaurant.deliveryFee,
+        deliveryFee: rest.deliveryFee,
         riderTip,
         paymentMethod,
         paymentProvider,
@@ -380,7 +392,8 @@ export default function CustomerView({
       
       if (paymentMethod === 'Cash on Delivery') {
         setCart([]); // Clear cart immediately for COD
-        setSelectedRestaurant(null);
+        setPaymentStep('success');
+        setShowPaymentModal(true);
       } else {
         // Display beautiful Paystack / Flutterwave popup
         setPaymentStep('provider_select');
@@ -1694,14 +1707,21 @@ export default function CustomerView({
                 </div>
               )}
 
-              {paymentStep === 'success' && (
+              {paymentStep === 'success' && pendingOrder && (
                 <div className="text-center py-6 space-y-4 animate-fade-in">
                   <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-3xl mx-auto shadow-inner animate-bounce">
                     ✔
                   </div>
                   <div>
-                    <h4 className="text-base font-black text-slate-900">Transaction Approved</h4>
-                    <p className="text-xs text-slate-500 mt-1">Payment successfully verified and settled. Your order #{pendingOrder.id} has been transmitted to {pendingOrder.restaurantName}!</p>
+                    <h4 className="text-base font-black text-slate-900">
+                      {pendingOrder.paymentMethod === 'Cash on Delivery' ? 'Order Placed Successfully!' : 'Transaction Approved'}
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {pendingOrder.paymentMethod === 'Cash on Delivery'
+                        ? `Your Cash on Delivery order #${pendingOrder.id} has been transmitted to ${pendingOrder.restaurantName}! Please prepare exactly ₦${pendingOrder.total.toLocaleString()} cash to pay upon delivery.`
+                        : `Payment successfully verified and settled. Your order #${pendingOrder.id} has been transmitted to ${pendingOrder.restaurantName}!`
+                      }
+                    </p>
                   </div>
                   <button
                     onClick={() => {
