@@ -360,6 +360,7 @@ export default function App() {
               restaurants={state.restaurants.filter(r => r.isApproved)} // only approved restaurants visible to customer
               menuItems={state.menuItems.filter(m => m.isAvailable)} // only available meals visible
               activeOrder={activeCustomerOrder}
+              orders={state.orders}
               onPlaceOrder={handlePlaceOrder}
               onPayOrder={handlePayOrder}
               onRateOrder={handleRateOrder}
@@ -393,6 +394,9 @@ export default function App() {
                 setCurrentCustomerId(customerId);
               }}
               customers={state.customers}
+              onUpdateCustomers={(updated) => {
+                setState(prev => ({ ...prev, customers: updated }));
+              }}
             />
           )
         )}
@@ -450,6 +454,9 @@ export default function App() {
                 setCurrentAdminId(adminId);
               }}
               admins={state.admins || []}
+              onUpdateAdmins={(updated) => {
+                setState(prev => ({ ...prev, admins: updated }));
+              }}
             />
           )
         )}

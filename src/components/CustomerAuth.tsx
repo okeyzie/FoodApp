@@ -5,9 +5,10 @@ import { CustomerAccount } from '../types';
 interface CustomerAuthProps {
   onLoginSuccess: (customerId: string, customerData?: CustomerAccount) => void;
   customers: CustomerAccount[];
+  onUpdateCustomers?: (updatedCustomers: CustomerAccount[]) => void;
 }
 
-export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuthProps) {
+export default function CustomerAuth({ onLoginSuccess, customers, onUpdateCustomers }: CustomerAuthProps) {
   const [activeTab, setActiveTab] = useState<'signin' | 'signup'>('signin');
   
   // Interactive Showcase States
@@ -40,6 +41,146 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
   const [signUpAddress, setSignUpAddress] = useState('Plot 8, Admiralty Road, Lekki Phase 1, Lagos');
   const [signUpAvatar, setSignUpAvatar] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+
+  // Forgot Password States
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotOtp, setForgotOtp] = useState('');
+  const [forgotNewPassword, setForgotNewPassword] = useState('');
+  const [forgotStep, setForgotStep] = useState<1 | 2>(1);
+  const [forgotSimulatedOtp, setForgotSimulatedOtp] = useState('');
+  const [forgotRealEmailSent, setForgotRealEmailSent] = useState(false);
+
+  // Handle requesting a reset code for customer
+  const handleRequestResetCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail) return;
+
+    setError(null);
+    setSuccessMsg(null);
+    setLoading(true);
+    let serverResponded = false;
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail }),
+      });
+      serverResponded = true;
+
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Request failed');
+        return;
+      }
+
+      setForgotSimulatedOtp(data.otpCode || '');
+      setForgotRealEmailSent(data.emailSent || false);
+      setForgotStep(2);
+      setSuccessMsg(data.emailSent 
+        ? 'We have sent a 4-digit reset code to your email.'
+        : 'A 4-digit reset code has been generated.'
+      );
+    } catch (err: any) {
+      if (serverResponded) {
+        setError(err.message || 'An error occurred.');
+        return;
+      }
+      // Local fallback simulation if offline
+      const trimmedEmail = forgotEmail.trim().toLowerCase();
+      const localCustomer = customers.find(c => c.email && c.email.toLowerCase() === trimmedEmail);
+      if (localCustomer) {
+        const simulatedCode = Math.floor(1000 + Math.random() * 9000).toString();
+        
+        // Notify parent of state change without direct mutation of props
+        if (onUpdateCustomers) {
+          const updated = customers.map(c => c.id === localCustomer.id ? { ...c, resetOtpCode: simulatedCode } : c);
+          onUpdateCustomers(updated);
+        } else {
+          localCustomer.resetOtpCode = simulatedCode;
+        }
+
+        setForgotSimulatedOtp(simulatedCode);
+        setForgotRealEmailSent(false);
+        setForgotStep(2);
+        setSuccessMsg('Email found in offline backup. A secure 4-digit reset code is generated below.');
+      } else {
+        setError('Email not found or network connection failed.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle resetting customer password
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!forgotEmail || !forgotOtp || !forgotNewPassword) return;
+
+    setError(null);
+    setSuccessMsg(null);
+    setLoading(true);
+    let serverResponded = false;
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail, otp: forgotOtp, newPassword: forgotNewPassword }),
+      });
+      serverResponded = true;
+
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error || 'Reset failed');
+        return;
+      }
+
+      setSuccessMsg('Your password was updated successfully!');
+      setSignInEmail(forgotEmail);
+      setSignInPassword(forgotNewPassword); // pre-fill
+      setTimeout(() => {
+        setShowForgotPassword(false);
+        setForgotStep(1);
+        setForgotEmail('');
+        setForgotOtp('');
+        setForgotNewPassword('');
+        setSuccessMsg('Sign in now with your newly configured password!');
+      }, 1500);
+    } catch (err: any) {
+      if (serverResponded) {
+        setError(err.message || 'An error occurred during password update.');
+        return;
+      }
+      // Offline fallback
+      const trimmedEmail = forgotEmail.trim().toLowerCase();
+      const localCustomer = customers.find(c => c.email && c.email.toLowerCase() === trimmedEmail);
+      if (localCustomer && localCustomer.resetOtpCode === forgotOtp.trim()) {
+        if (onUpdateCustomers) {
+          const updated = customers.map(c => c.id === localCustomer.id ? { ...c, password: forgotNewPassword, resetOtpCode: undefined } : c);
+          onUpdateCustomers(updated);
+        } else {
+          localCustomer.password = forgotNewPassword;
+          localCustomer.resetOtpCode = undefined;
+        }
+
+        setSuccessMsg('Password updated successfully (Offline backup)!');
+        setSignInEmail(forgotEmail);
+        setSignInPassword(forgotNewPassword);
+        setTimeout(() => {
+          setShowForgotPassword(false);
+          setForgotStep(1);
+          setForgotEmail('');
+          setForgotOtp('');
+          setForgotNewPassword('');
+          setSuccessMsg('Sign in now with your newly configured password!');
+        }, 1500);
+      } else {
+        setError('Invalid reset code or network error.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -825,20 +966,22 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
           <div className="text-center mb-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 border border-emerald-100 rounded-full text-xs font-black text-emerald-800 mb-3">
               <Sparkles className="w-3.5 h-3.5 text-amber-500 animate-pulse" />
-              <span>{showVerification ? "Secured Account Verification" : "Secured Live Customer Hub"}</span>
+              <span>{showForgotPassword ? "Secure Password Reset" : showVerification ? "Secured Account Verification" : "Secured Live Customer Hub"}</span>
             </div>
             <h2 className="text-2xl font-black tracking-tight text-neutral-900">
-              {showVerification ? "Verify Email" : "Access Account"}
+              {showForgotPassword ? "Reset Password" : showVerification ? "Verify Email" : "Access Account"}
             </h2>
             <p className="text-xs text-gray-400 font-semibold mt-1">
-              {showVerification 
-                ? "Enter the code generated for your email to continue" 
-                : "Authenticate to access real, live gourmet delivery logistics"}
+              {showForgotPassword
+                ? (forgotStep === 1 ? "Enter your registered email to receive a reset code" : "Enter reset code and set your new password")
+                : showVerification 
+                  ? "Enter the code generated for your email to continue" 
+                  : "Authenticate to access real, live gourmet delivery logistics"}
             </p>
           </div>
 
           {/* Tabs */}
-          {!showVerification && (
+          {!showVerification && !showForgotPassword && (
             <div className="bg-gray-100 p-1.5 rounded-2xl flex mb-6 border border-gray-200/50">
               <button
                 onClick={() => { setActiveTab('signin'); setError(null); }}
@@ -882,7 +1025,120 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
 
           {/* Forms Container */}
           <div className="bg-white border border-gray-200/80 shadow-xs rounded-3xl p-6 sm:p-8 space-y-6">
-        {showVerification ? (
+        {showForgotPassword ? (
+          forgotStep === 1 ? (
+            <form onSubmit={handleRequestResetCode} className="space-y-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-500 flex items-center gap-1">
+                  <Mail className="w-3.5 h-3.5 text-gray-400" />
+                  <span>Your Registered Email Address</span>
+                </label>
+                <input
+                  type="email"
+                  required
+                  placeholder="e.g. blessing.amadi@example.com"
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  disabled={loading}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-xs outline-none focus:border-emerald-600/40 text-gray-800 focus:ring-2 focus:ring-emerald-600/20"
+                />
+              </div>
+
+              <div className="space-y-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3.5 bg-emerald-800 hover:bg-emerald-950 text-white font-extrabold rounded-xl text-xs transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 font-sans"
+                >
+                  {loading ? 'Sending Request...' : 'Send Reset Code 📩'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { setShowForgotPassword(false); setError(null); setSuccessMsg(null); }}
+                  className="w-full py-2.5 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-700 text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center justify-center"
+                >
+                  Back to Sign In
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              {forgotRealEmailSent ? (
+                <div className="bg-emerald-50/80 border border-emerald-200/60 p-4 rounded-2xl text-center space-y-2">
+                  <span className="text-xs text-emerald-800 font-extrabold flex items-center justify-center gap-1.5 uppercase font-mono tracking-wider">
+                    📩 Reset Code Dispatched
+                  </span>
+                  <p className="text-[11px] text-gray-600 font-semibold leading-relaxed">
+                    We've sent your 4-digit reset code to <span className="text-emerald-950 font-bold">{forgotEmail}</span>.
+                  </p>
+                </div>
+              ) : (
+                forgotSimulatedOtp && (
+                  <div className="bg-amber-50/60 border border-amber-200/50 p-4 rounded-2xl text-center space-y-1.5">
+                    <span className="text-[10px] text-amber-800 font-extrabold uppercase font-mono tracking-wider block">🛠️ Developer Sandbox Code</span>
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="bg-emerald-800 text-emerald-50 font-mono font-black text-xs px-2.5 py-1 rounded-lg tracking-widest select-all cursor-pointer">
+                        {forgotSimulatedOtp}
+                      </span>
+                    </div>
+                  </div>
+                )
+              )}
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-500 flex items-center gap-1">
+                  <Lock className="w-3.5 h-3.5 text-gray-400" />
+                  <span>Enter 4-Digit Reset Code</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  maxLength={4}
+                  placeholder="e.g. 1234"
+                  value={forgotOtp}
+                  onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, ''))}
+                  disabled={loading}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-center text-sm font-mono font-bold tracking-widest outline-none focus:border-emerald-600/40 text-gray-800"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-gray-500 flex items-center gap-1">
+                  <Lock className="w-3.5 h-3.5 text-gray-400" />
+                  <span>Choose New Password</span>
+                </label>
+                <input
+                  type="password"
+                  required
+                  placeholder="••••••••"
+                  value={forgotNewPassword}
+                  onChange={(e) => setForgotNewPassword(e.target.value)}
+                  disabled={loading}
+                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-xs outline-none focus:border-emerald-600/40 text-gray-800"
+                />
+              </div>
+
+              <div className="space-y-2 pt-2">
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3.5 bg-emerald-800 hover:bg-emerald-950 text-white font-extrabold rounded-xl text-xs transition-colors shadow-sm flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 font-sans"
+                >
+                  {loading ? 'Updating Password...' : 'Update Password & Sign In Key 🛡️'}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setForgotStep(1)}
+                  className="w-full py-2 bg-gray-50 hover:bg-gray-100 border border-gray-200 text-gray-600 text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center justify-center"
+                >
+                  Request a new code
+                </button>
+              </div>
+            </form>
+          )
+        ) : showVerification ? (
           <form onSubmit={handleVerifyOtp} className="space-y-5">
             <div className="text-center space-y-2">
               <div className="w-12 h-12 bg-emerald-50 text-emerald-800 rounded-full flex items-center justify-center mx-auto border border-emerald-100">
@@ -987,10 +1243,19 @@ export default function CustomerAuth({ onLoginSuccess, customers }: CustomerAuth
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-gray-500 flex items-center gap-1">
-                <Lock className="w-3.5 h-3.5 text-gray-400" />
-                <span>Password</span>
-              </label>
+              <div className="flex justify-between items-center">
+                <label className="text-xs font-bold text-gray-500 flex items-center gap-1">
+                  <Lock className="w-3.5 h-3.5 text-gray-400" />
+                  <span>Password</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => { setShowForgotPassword(true); setForgotStep(1); setForgotEmail(signInEmail); setError(null); setSuccessMsg(null); }}
+                  className="text-[10px] font-extrabold text-emerald-800 hover:text-emerald-950 hover:underline cursor-pointer"
+                >
+                  Forgot Password?
+                </button>
+              </div>
               <input
                 type="password"
                 required

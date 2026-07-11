@@ -603,6 +603,125 @@ async function sendBrevoEmail(toEmail: string, toName: string, otpCode: string):
   }
 }
 
+// Send real-time Password Reset OTP using Brevo
+async function sendBrevoResetEmail(toEmail: string, toName: string, otpCode: string, isAdmin: boolean = false): Promise<boolean> {
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) {
+    console.warn("BREVO_API_KEY is not defined. Reset email was not sent. Standard local demo/simulation mode remains active.");
+    return false;
+  }
+
+  const senderEmail = process.env.BREVO_SENDER_EMAIL || "leookeyzie@gmail.com";
+  const senderName = process.env.BREVO_SENDER_NAME || "FoodHub Security";
+
+  const appTitle = isAdmin ? "FoodHub operations" : "FoodHub Lagos";
+  const subjectText = isAdmin 
+    ? `[SECURE] Admin Console Password Reset: ${otpCode}` 
+    : `Your FoodHub Password Reset Code: ${otpCode}`;
+
+  try {
+    const payload = {
+      sender: {
+        name: senderName,
+        email: senderEmail
+      },
+      to: [
+        {
+          email: toEmail,
+          name: toName
+        }
+      ],
+      subject: subjectText,
+      htmlContent: `
+        <div style="background-color: #0b1511; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; padding: 50px 20px; margin: 0; min-height: 100%;">
+          <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 580px; background-color: #111e19; border-radius: 24px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.3); border: 1px solid #1f3529;">
+            <!-- Brand Header Banner -->
+            <tr>
+              <td style="background: linear-gradient(135deg, ${isAdmin ? '#991b1b' : '#064e3b'} 0%, #022c22 100%); padding: 45px 40px; text-align: center; border-bottom: 3px solid ${isAdmin ? '#ef4444' : '#10b981'};">
+                <table align="center" border="0" cellpadding="0" cellspacing="0" style="margin: 0 auto;">
+                  <tr>
+                    <td style="background-color: rgba(239, 68, 68, 0.15); border: 1.5px solid rgba(239, 68, 68, 0.3); border-radius: 20px; padding: 14px; display: inline-block; box-shadow: 0 4px 12px rgba(0,0,0,0.15);">
+                      <span style="font-size: 36px; line-height: 1; vertical-align: middle;">${isAdmin ? '🔑' : '🍔'}</span>
+                    </td>
+                  </tr>
+                </table>
+                <h1 style="color: #ffffff; font-family: 'Space Grotesk', 'Inter', sans-serif; font-size: 32px; font-weight: 800; margin: 18px 0 6px 0; letter-spacing: -0.75px;">FoodHub ${isAdmin ? 'Console' : ''}</h1>
+                <p style="color: ${isAdmin ? '#ef4444' : '#10b981'}; font-size: 11px; font-weight: 700; margin: 0; text-transform: uppercase; letter-spacing: 2.5px;">${isAdmin ? 'Restricted Operational Security' : 'Premium Lagos Culinary Security'}</p>
+              </td>
+            </tr>
+            <!-- Content Body -->
+            <tr>
+              <td style="padding: 45px 40px; background-color: #111e19;">
+                <h2 style="color: #ffffff; font-size: 22px; font-weight: 700; margin-top: 0; margin-bottom: 14px; letter-spacing: -0.3px;">Password Reset Request</h2>
+                <p style="color: #94a3b8; font-size: 14px; line-height: 1.65; margin-top: 0; margin-bottom: 28px;">
+                  Hello <strong style="color: #ffffff;">${toName}</strong>,<br><br>
+                  We received a request to reset your password for your ${appTitle} account. To authorize this change and configure a new secure credential, please input this secure 4-digit password reset code:
+                </p>
+                
+                <!-- Code Display Container -->
+                <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 35px 0; background-color: #064e3b; border: 2px dashed ${isAdmin ? '#ef4444' : '#10b981'}; border-radius: 20px;">
+                  <tr>
+                    <td style="padding: 30px; text-align: center;">
+                      <span style="font-size: 11px; color: ${isAdmin ? '#fca5a5' : '#34d399'}; font-weight: 800; text-transform: uppercase; letter-spacing: 2px; display: block; margin-bottom: 10px;">Security Verification Code</span>
+                      <span style="font-family: 'JetBrains Mono', 'Courier New', monospace; font-size: 48px; font-weight: 900; letter-spacing: 12px; color: #ffffff; display: inline-block; line-height: 1; text-shadow: 0 2px 10px rgba(16, 185, 129, 0.4);">${otpCode}</span>
+                    </td>
+                  </tr>
+                </table>
+                
+                <!-- Safety Advisory -->
+                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #162a21; border-radius: 16px; border: 1px solid #1f3d2f; margin-bottom: 35px;">
+                  <tr>
+                    <td style="padding: 18px; color: #a7f3d0; font-size: 12.5px; line-height: 1.6;">
+                      <span style="font-size: 16px; vertical-align: middle; margin-right: 6px;">🔒</span> <strong>Security Warning:</strong> This reset code will expire in 15 minutes. If you did not request a password reset, please secure your account immediately or ignore this email.
+                    </td>
+                  </tr>
+                </table>
+                
+                <p style="color: #64748b; font-size: 13px; line-height: 1.6; margin-bottom: 0;">
+                  Please keep your credentials confidential. FoodHub employees will never ask you for your passwords or authentication codes.
+                </p>
+              </td>
+            </tr>
+            <!-- Footer Section -->
+            <tr>
+              <td style="background-color: #0b1511; padding: 35px; text-align: center; border-top: 1px solid #1f3529;">
+                <p style="color: #64748b; font-size: 11px; line-height: 1.6; margin: 0 0 12px 0;">
+                  This is an automated operational security transmission. Please do not reply to this email.
+                </p>
+                <p style="color: #475569; font-size: 11px; margin: 0; font-weight: 500;">
+                  FoodHub Lagos • Plot 8, Admiralty Road, Lekki Phase 1, Lagos, Nigeria
+                </p>
+              </td>
+            </tr>
+          </table>
+        </div>
+      `
+    };
+
+    const res = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "accept": "application/json",
+        "api-key": apiKey,
+        "content-type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) {
+      const errorResponse = await res.text();
+      console.error(`Brevo password reset email sending failed for ${toEmail}: ${res.status} - ${errorResponse}`);
+      return false;
+    }
+
+    console.log(`Real password reset email successfully dispatched to ${toEmail} using Brevo!`);
+    return true;
+  } catch (error) {
+    console.error(`Error encountered while dispatching Brevo password reset email to ${toEmail}:`, error);
+    return false;
+  }
+}
+
 // Initialize db (synchronous file-system baseline)
 let db = loadDatabase();
 
@@ -1217,6 +1336,57 @@ app.post("/api/auth/resend-otp", async (req, res) => {
   });
 });
 
+// 5. Customer Forgot Password
+app.post("/api/auth/forgot-password", async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: "Email is required to request a password reset." });
+  }
+  const trimmedEmail = email.trim().toLowerCase();
+  const customer = db.customers.find(c => c.email.toLowerCase() === trimmedEmail);
+  if (!customer) {
+    return res.status(404).json({ error: "No registered customer account found with this email." });
+  }
+
+  // Generate a 4-digit code
+  const resetOtp = Math.floor(1000 + Math.random() * 9000).toString();
+  customer.resetOtpCode = resetOtp;
+  saveDatabase(db);
+
+  // Send real Brevo email
+  const emailSent = await sendBrevoResetEmail(customer.email, customer.name, resetOtp, false);
+
+  res.json({
+    message: "A secure password reset verification code has been generated.",
+    email: customer.email,
+    otpCode: resetOtp,
+    emailSent
+  });
+});
+
+// 6. Customer Reset Password
+app.post("/api/auth/reset-password", (req, res) => {
+  const { email, otp, newPassword } = req.body;
+  if (!email || !otp || !newPassword) {
+    return res.status(400).json({ error: "Email, reset code (OTP), and new password are required." });
+  }
+  const trimmedEmail = email.trim().toLowerCase();
+  const customer = db.customers.find(c => c.email.toLowerCase() === trimmedEmail);
+  if (!customer) {
+    return res.status(404).json({ error: "Customer account not found." });
+  }
+
+  if (!customer.resetOtpCode || customer.resetOtpCode !== otp.toString().trim()) {
+    return res.status(400).json({ error: "Invalid password reset code. Please check your email and try again." });
+  }
+
+  customer.password = newPassword;
+  customer.resetOtpCode = undefined; // clear it
+  saveDatabase(db);
+
+  res.json({ message: "Your password has been reset successfully! You can now sign in with your new password." });
+});
+
 // 2b. Admin Registration
 app.post("/api/admin/register", (req, res) => {
   const { email, password, name, businessPasscode } = req.body;
@@ -1276,6 +1446,63 @@ app.post("/api/admin/login", (req, res) => {
     return res.status(400).json({ error: "Invalid admin email or password." });
   }
   res.json(admin);
+});
+
+// 2d. Admin Forgot Password
+app.post("/api/admin/forgot-password", async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: "Email is required to request an admin password reset." });
+  }
+  const trimmedEmail = email.trim().toLowerCase();
+  if (!db.admins) {
+    db.admins = [];
+  }
+  const admin = db.admins.find(a => a.email.toLowerCase() === trimmedEmail);
+  if (!admin) {
+    return res.status(404).json({ error: "No administrator account found with this email." });
+  }
+
+  // Generate a 4-digit code
+  const resetOtp = Math.floor(1000 + Math.random() * 9000).toString();
+  admin.resetOtpCode = resetOtp;
+  saveDatabase(db);
+
+  // Send real Brevo email
+  const emailSent = await sendBrevoResetEmail(admin.email, admin.name, resetOtp, true);
+
+  res.json({
+    message: "An administrative password reset code has been generated.",
+    email: admin.email,
+    otpCode: resetOtp,
+    emailSent
+  });
+});
+
+// 2e. Admin Reset Password
+app.post("/api/admin/reset-password", (req, res) => {
+  const { email, otp, newPassword } = req.body;
+  if (!email || !otp || !newPassword) {
+    return res.status(400).json({ error: "Email, reset code, and new password are required." });
+  }
+  const trimmedEmail = email.trim().toLowerCase();
+  if (!db.admins) {
+    db.admins = [];
+  }
+  const admin = db.admins.find(a => a.email.toLowerCase() === trimmedEmail);
+  if (!admin) {
+    return res.status(404).json({ error: "Administrator account not found." });
+  }
+
+  if (!admin.resetOtpCode || admin.resetOtpCode !== otp.toString().trim()) {
+    return res.status(400).json({ error: "Invalid password reset code. Please check your official email and try again." });
+  }
+
+  admin.password = newPassword;
+  admin.resetOtpCode = undefined; // clear it
+  saveDatabase(db);
+
+  res.json({ message: "Admin credentials updated successfully! You can now log into the operations deck." });
 });
 
 // 3. Get Google OAuth URL (Returns Google's or the local simulation URL)

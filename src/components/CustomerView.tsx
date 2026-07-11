@@ -21,6 +21,8 @@ import {
   User,
   Copy,
   Check,
+  History,
+  RotateCcw,
 } from 'lucide-react';
 import { Restaurant, MenuItem, Order, OrderItem, ChatMessage, PaymentMethod, PaymentProvider, CustomerAccount } from '../types';
 import LiveTrackingMap from './LiveTrackingMap';
@@ -29,6 +31,7 @@ interface CustomerViewProps {
   restaurants: Restaurant[];
   menuItems: MenuItem[];
   activeOrder: Order | null;
+  orders: Order[];
   onPlaceOrder: (orderData: any) => Promise<Order>;
   onPayOrder: (orderId: string, provider: PaymentProvider) => Promise<void>;
   onRateOrder: (orderId: string, data: any) => Promise<void>;
@@ -46,6 +49,7 @@ export default function CustomerView({
   restaurants,
   menuItems,
   activeOrder,
+  orders = [],
   onPlaceOrder,
   onPayOrder,
   onRateOrder,
@@ -165,6 +169,31 @@ export default function CustomerView({
       updated.splice(index, 1);
       setCart(updated);
     }
+  };
+
+  const handleReorder = (order: Order) => {
+    const matchedRest = restaurants.find(r => r.id === order.restaurantId);
+    if (!matchedRest) {
+      alert("This restaurant is no longer available.");
+      return;
+    }
+    
+    const newCartItems: OrderItem[] = order.items.map(item => {
+      const mItem = menuItems.find(m => m.id === item.menuItemId);
+      return {
+        id: item.id,
+        menuItemId: item.menuItemId,
+        name: item.name,
+        price: mItem ? mItem.price : item.price,
+        quantity: item.quantity,
+        selectedAddOns: item.selectedAddOns || [],
+        specialInstructions: item.specialInstructions || '',
+      };
+    });
+
+    setCart(newCartItems);
+    setSelectedRestaurant(matchedRest);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const getCartSubtotal = () => {
@@ -864,6 +893,128 @@ export default function CustomerView({
                         </div>
                       </div>
                     ))}
+                  </div>
+
+                  {/* Order History Section */}
+                  <div className="mt-12 border-t border-gray-100 pt-8" id="order-history-section">
+                    <div className="flex items-center gap-2.5 mb-6">
+                      <div className="p-2 bg-emerald-50 rounded-xl text-emerald-800 border border-emerald-100/30">
+                        <History className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-black text-gray-800">Your Order History</h3>
+                        <p className="text-xs text-gray-500 font-medium">View previous Lagos culinary runs and quickly duplicate them</p>
+                      </div>
+                    </div>
+
+                    {(() => {
+                      const customerOrders = orders.filter(o => o.customerId === currentCustomerId);
+                      const sortedCustomerOrders = [...customerOrders].sort(
+                        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+                      );
+
+                      if (sortedCustomerOrders.length === 0) {
+                        return (
+                          <div className="bg-white border border-gray-200 rounded-2xl p-10 text-center text-gray-400 shadow-sm">
+                            <Clock className="w-10 h-10 mx-auto stroke-[1.5] mb-2 text-gray-300 animate-pulse" />
+                            <h4 className="text-xs font-bold text-gray-700">No Past Orders Found</h4>
+                            <p className="text-[10px] text-gray-400 mt-1 max-w-xs mx-auto">Once you complete a Lagos gourmet run, your delivery records and invoices will populate here.</p>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div className="space-y-4">
+                          {sortedCustomerOrders.map((order) => {
+                            const orderDate = new Date(order.createdAt).toLocaleDateString([], {
+                              month: 'short',
+                              day: 'numeric',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit'
+                            });
+
+                            // Status badge styling helper
+                            const getStatusBadge = (status: string) => {
+                              switch (status) {
+                                case 'Delivered':
+                                  return (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-100 uppercase tracking-wider">
+                                      <CheckCircle className="w-3 h-3 text-emerald-600" />
+                                      Delivered
+                                    </span>
+                                  );
+                                case 'Cancelled':
+                                  return (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-full bg-rose-50 text-rose-800 border border-rose-100 uppercase tracking-wider">
+                                      <X className="w-3 h-3 text-rose-600" />
+                                      Cancelled
+                                    </span>
+                                  );
+                                default:
+                                  return (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 border border-amber-100 uppercase tracking-wider animate-pulse">
+                                      <Clock className="w-3 h-3 text-amber-600" />
+                                      {status}
+                                    </span>
+                                  );
+                              }
+                            };
+
+                            return (
+                              <div key={order.id} className="bg-white border border-gray-200 rounded-2xl p-5 hover:border-emerald-600/30 hover:shadow-xs transition-all duration-300">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-gray-100 pb-3">
+                                  <div>
+                                    <span className="text-[9px] font-mono text-gray-400 font-bold block uppercase tracking-wider">ORDER #{order.id}</span>
+                                    <h4 className="text-sm font-black text-gray-800 mt-0.5">{order.restaurantName}</h4>
+                                    <p className="text-[10px] text-gray-400 font-semibold mt-0.5">{orderDate}</p>
+                                  </div>
+                                  <div className="flex items-center gap-2.5 self-start sm:self-center">
+                                    {getStatusBadge(order.status)}
+                                    <span className="text-sm font-black text-emerald-900">₦{order.total.toLocaleString()}</span>
+                                  </div>
+                                </div>
+
+                                <div className="py-3">
+                                  <p className="text-[10px] font-extrabold text-gray-400 uppercase tracking-wider mb-2">Ordered Items</p>
+                                  <div className="space-y-1.5">
+                                    {order.items.map((item, idx) => (
+                                      <div key={idx} className="flex justify-between text-xs text-gray-600 font-medium">
+                                        <span>
+                                          {item.quantity}x <strong className="text-gray-700 font-bold">{item.name}</strong>
+                                          {item.selectedAddOns && item.selectedAddOns.length > 0 && (
+                                            <span className="text-[10px] text-gray-400 block ml-4">
+                                              + {item.selectedAddOns.map(a => `${a.name} (₦${a.price})`).join(', ')}
+                                            </span>
+                                          )}
+                                        </span>
+                                        <span className="text-gray-400 font-mono">
+                                          ₦{((item.price + (item.selectedAddOns || []).reduce((sum, ad) => sum + ad.price, 0)) * item.quantity).toLocaleString()}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center justify-between border-t border-gray-100 pt-3 mt-1">
+                                  <span className="text-[10px] text-gray-400 font-semibold">
+                                    Payment: <strong className="text-gray-600">{order.paymentMethod} • {order.paymentStatus}</strong>
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleReorder(order)}
+                                    className="px-4 py-2 bg-emerald-800 hover:bg-emerald-950 text-white text-xs font-black rounded-xl transition-all shadow-3xs flex items-center gap-1.5 cursor-pointer transform hover:scale-[1.02] active:scale-[0.98]"
+                                  >
+                                    <RotateCcw className="w-3.5 h-3.5 stroke-[2.5]" />
+                                    <span>Re-order Items</span>
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               )}
