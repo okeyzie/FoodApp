@@ -109,10 +109,33 @@ export default function CustomerView({
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [pendingOrder, setPendingOrder] = useState<Order | null>(null);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
-  const [paymentStep, setPaymentStep] = useState<'provider_select' | 'card_details' | 'success'>('provider_select');
+  const [paymentStep, setPaymentStep] = useState<'provider_select' | 'card_details' | 'otp_verify' | 'bank_transfer' | 'success'>('provider_select');
   const [cardNumber, setCardNumber] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCVV, setCardCVV] = useState('');
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [otpCode, setOtpCode] = useState('');
+  const [transferTimer, setTransferTimer] = useState(600); // 10 mins countdown
+  const [copiedPaymentAcc, setCopiedPaymentAcc] = useState(false);
+
+  // Bank transfer countdown timer
+  React.useEffect(() => {
+    let interval: any;
+    if (showPaymentModal && paymentStep === 'bank_transfer' && transferTimer > 0) {
+      interval = setInterval(() => {
+        setTransferTimer(prev => prev - 1);
+      }, 1000);
+    } else if (transferTimer === 0 && paymentStep === 'bank_transfer') {
+      setPaymentError("The unique transfer account has expired. Please close checkout and try again.");
+    }
+    return () => clearInterval(interval);
+  }, [showPaymentModal, paymentStep, transferTimer]);
+
+  const formatTimer = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
 
   // Review state
   const [restaurantRating, setRestaurantRating] = useState(5);
@@ -171,6 +194,14 @@ export default function CustomerView({
     }
   };
 
+  const handleIncrementCartItem = (cartItemId: string) => {
+    const index = cart.findIndex(c => c.id === cartItemId);
+    if (index === -1) return;
+    const updated = [...cart];
+    updated[index].quantity += 1;
+    setCart(updated);
+  };
+
   const handleReorder = (order: Order) => {
     const matchedRest = restaurants.find(r => r.id === order.restaurantId);
     if (!matchedRest) {
@@ -207,6 +238,123 @@ export default function CustomerView({
   const getDeliveryFee = () => (selectedRestaurant ? selectedRestaurant.deliveryFee : 500);
   const getCartTotal = () => getCartSubtotal() + getCartTax() + getDeliveryFee() + riderTip;
 
+  const handleCardNumberChange = (value: string) => {
+    let clean = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+    let formatted = '';
+    for (let i = 0; i < clean.length && i < 16; i++) {
+      if (i > 0 && i % 4 === 0) formatted += ' ';
+      formatted += clean[i];
+    }
+    setCardNumber(formatted);
+    setPaymentError(null);
+  };
+
+  const handleCardExpiryChange = (value: string) => {
+    let clean = value.replace(/[^0-9]/gi, '');
+    let formatted = '';
+    if (clean.length > 0) {
+      formatted = clean.substring(0, 2);
+      if (clean.length > 2) {
+        formatted += '/' + clean.substring(2, 4);
+      }
+    }
+    setCardExpiry(formatted);
+    setPaymentError(null);
+  };
+
+  const handleCardCVVChange = (value: string) => {
+    let clean = value.replace(/[^0-9]/gi, '').substring(0, 3);
+    setCardCVV(clean);
+    setPaymentError(null);
+  };
+
+  const validateCardDetails = () => {
+    const rawCardNum = cardNumber.replace(/\s/g, '');
+    if (rawCardNum.length !== 16) {
+      setPaymentError("Invalid Card Number. Please enter a valid 16-digit card number.");
+      return false;
+    }
+    if (cardExpiry.length !== 5 || !cardExpiry.includes('/')) {
+      setPaymentError("Invalid Expiry Date. Please use MM/YY format.");
+      return false;
+    }
+    const [monthStr, yearStr] = cardExpiry.split('/');
+    const month = parseInt(monthStr, 10);
+    if (month < 1 || month > 12) {
+      setPaymentError("Invalid Expiry Month. Must be between 01 and 12.");
+      return false;
+    }
+    if (cardCVV.length !== 3) {
+      setPaymentError("Invalid CVV. Please enter a 3-digit CVV code.");
+      return false;
+    }
+    return true;
+  };
+
+  const handleCardAuthSubmit = () => {
+    if (!validateCardDetails()) return;
+    
+    setIsProcessingPayment(true);
+    setPaymentError(null);
+    
+    // Simulate real bank authorization network lag
+    setTimeout(() => {
+      setIsProcessingPayment(false);
+      setPaymentStep('otp_verify');
+      setOtpCode('');
+    }, 1500);
+  };
+
+  const handleOtpSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pendingOrder) return;
+    if (otpCode.length < 4) {
+      setPaymentError("Please enter the 4-digit code sent to your mobile device.");
+      return;
+    }
+    
+    setIsProcessingPayment(true);
+    setPaymentError(null);
+    
+    setTimeout(async () => {
+      try {
+        await onPayOrder(pendingOrder.id, paymentProvider);
+        setIsProcessingPayment(false);
+        setPaymentStep('success');
+        setCart([]); // Clear cart ONLY upon successful payment!
+      } catch (e) {
+        console.error(e);
+        setIsProcessingPayment(false);
+        setPaymentError("Failed to authorize card OTP. Please retry.");
+      }
+    }, 1500);
+  };
+
+  const handleInitiateBankTransfer = () => {
+    setPaymentStep('bank_transfer');
+    setTransferTimer(600); // 10 minutes
+    setPaymentError(null);
+  };
+
+  const handleBankTransferConfirm = () => {
+    if (!pendingOrder) return;
+    setIsProcessingPayment(true);
+    setPaymentError(null);
+    
+    setTimeout(async () => {
+      try {
+        await onPayOrder(pendingOrder.id, paymentProvider);
+        setIsProcessingPayment(false);
+        setPaymentStep('success');
+        setCart([]); // Clear cart ONLY upon successful payment!
+      } catch (e) {
+        console.error(e);
+        setIsProcessingPayment(false);
+        setPaymentError("Transfer verification timed out. Please retry.");
+      }
+    }, 2000);
+  };
+
   const handleCheckout = async () => {
     if (!selectedRestaurant || cart.length === 0) return;
     
@@ -228,10 +376,10 @@ export default function CustomerView({
       });
       
       setPendingOrder(order);
-      setCart([]);
+      setPaymentError(null);
       
       if (paymentMethod === 'Cash on Delivery') {
-        // No checkout modal needed for COD
+        setCart([]); // Clear cart immediately for COD
         setSelectedRestaurant(null);
       } else {
         // Display beautiful Paystack / Flutterwave popup
@@ -244,15 +392,16 @@ export default function CustomerView({
   };
 
   const simulatePayment = async () => {
+    // This serves as fallback for any legacy buttons calling simulatePayment
     if (!pendingOrder) return;
     setIsProcessingPayment(true);
     
-    // Simulate real bank authorization network lag
     setTimeout(async () => {
       try {
         await onPayOrder(pendingOrder.id, paymentProvider);
         setIsProcessingPayment(false);
         setPaymentStep('success');
+        setCart([]); // Clear cart on success
       } catch (e) {
         console.error(e);
         setIsProcessingPayment(false);
@@ -277,6 +426,7 @@ export default function CustomerView({
         await onPayOrder(pendingOrder.id, paymentProvider);
         setIsProcessingPayment(false);
         setPaymentStep('success');
+        setCart([]); // Clear cart on success!
       } catch (e) {
         console.error(e);
         setIsProcessingPayment(false);
@@ -1052,7 +1202,7 @@ export default function CustomerView({
                           </button>
                           <span className="text-xs font-bold text-gray-700 px-1">{item.quantity}</span>
                           <button
-                            onClick={() => handleAddToCart({ id: item.menuItemId, name: item.name, price: item.price } as MenuItem, [])}
+                            onClick={() => handleIncrementCartItem(item.id)}
                             className="p-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-600"
                           >
                             <Plus className="w-3 h-3" />
@@ -1066,6 +1216,36 @@ export default function CustomerView({
                 {/* Cart Checkout Summary controls */}
                 {cart.length > 0 && (
                   <div className="border-t border-gray-100 pt-3 space-y-3.5 text-xs">
+
+                    {/* Delivery Location & Instructions */}
+                    <div className="bg-gray-50 border border-gray-100 p-3 rounded-xl space-y-2.5 animate-fade-in">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs">📍</span>
+                        <span className="text-[10px] font-bold text-gray-500 uppercase tracking-wider font-mono">Delivery Destination</span>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block">Destination Address</label>
+                        <input
+                          type="text"
+                          placeholder="Enter your delivery address in Lagos..."
+                          value={deliveryAddress}
+                          onChange={(e) => setDeliveryAddress(e.target.value)}
+                          className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-gray-700 outline-none focus:border-emerald-500 shadow-3xs"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block">Rider Instructions (Optional)</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Ring bell twice, leave with security guard..."
+                          value={deliveryNotes}
+                          onChange={(e) => setDeliveryNotes(e.target.value)}
+                          className="w-full bg-white border border-gray-200 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-gray-700 outline-none focus:border-emerald-500 shadow-3xs"
+                        />
+                      </div>
+                    </div>
 
                     {/* Tip Rider */}
                     <div className="flex items-center justify-between bg-gray-50 border border-gray-100 p-2 rounded-xl">
@@ -1088,28 +1268,52 @@ export default function CustomerView({
                     </div>
 
                     {/* Payment Gateways Selection */}
-                    <div className="bg-gray-50 border border-gray-100 p-2 rounded-xl">
-                      <span className="text-[10px] font-bold text-gray-500 block mb-1.5">💳 Checkout Payment Gateway</span>
+                    <div className="bg-gray-50 border border-gray-100 p-3 rounded-xl space-y-2">
+                      <span className="text-[10px] font-bold text-gray-500 block">💳 Checkout Payment Option</span>
                       <div className="grid grid-cols-2 gap-1.5">
                         <button
+                          type="button"
                           onClick={() => { setPaymentMethod('Card'); setPaymentProvider('Paystack'); }}
-                          className={`px-2 py-1 text-[10px] font-black rounded-md border text-center transition-all ${
+                          className={`px-2 py-2 text-[10px] font-black rounded-lg border text-center transition-all cursor-pointer ${
                             paymentProvider === 'Paystack' && paymentMethod === 'Card'
-                              ? 'bg-teal-600 text-white border-teal-500'
-                              : 'bg-white border-gray-200 text-gray-500 hover:text-gray-800'
+                              ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
+                              : 'bg-white border-gray-200 text-gray-600 hover:border-teal-500 hover:text-teal-600'
                           }`}
                         >
-                          Paystack Card
+                          Paystack
                         </button>
                         <button
+                          type="button"
                           onClick={() => { setPaymentMethod('Card'); setPaymentProvider('Flutterwave'); }}
-                          className={`px-2 py-1 text-[10px] font-black rounded-md border text-center transition-all ${
+                          className={`px-2 py-2 text-[10px] font-black rounded-lg border text-center transition-all cursor-pointer ${
                             paymentProvider === 'Flutterwave' && paymentMethod === 'Card'
-                              ? 'bg-indigo-600 text-white border-indigo-500'
-                              : 'bg-white border-gray-200 text-gray-500 hover:text-gray-800'
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                              : 'bg-white border-gray-200 text-gray-600 hover:border-indigo-500 hover:text-indigo-600'
                           }`}
                         >
                           Flutterwave
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setPaymentMethod('Wallet'); setPaymentProvider('Paystack'); }}
+                          className={`px-2 py-2 text-[10px] font-black rounded-lg border text-center transition-all cursor-pointer ${
+                            paymentMethod === 'Wallet'
+                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                              : 'bg-white border-gray-200 text-gray-600 hover:border-emerald-500 hover:text-emerald-600'
+                          }`}
+                        >
+                          FoodHub Wallet
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setPaymentMethod('Cash on Delivery'); setPaymentProvider('COD'); }}
+                          className={`px-2 py-2 text-[10px] font-black rounded-lg border text-center transition-all cursor-pointer ${
+                            paymentMethod === 'Cash on Delivery'
+                              ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
+                              : 'bg-white border-gray-200 text-gray-600 hover:border-amber-500 hover:text-amber-600'
+                          }`}
+                        >
+                          Cash on Delivery
                         </button>
                       </div>
                     </div>
@@ -1162,33 +1366,39 @@ export default function CustomerView({
           <div className="w-full max-w-sm bg-white rounded-3xl overflow-hidden shadow-2xl border border-slate-100 text-slate-800 flex flex-col">
             
             {/* Payment Header themed by Provider */}
-            <div className={`p-5 text-white flex items-center justify-between ${
-              paymentProvider === 'Paystack' ? 'bg-teal-600' : 'bg-indigo-600'
+            <div className={`p-5 text-white flex items-center justify-between transition-colors duration-300 ${
+              paymentProvider === 'Paystack' ? 'bg-[#00A389]' : 'bg-[#EF4444]'
             }`}>
               <div>
-                <span className="text-[10px] font-bold uppercase tracking-wider opacity-85">Secure Cashless Checkout</span>
-                <h3 className="text-base font-black mt-0.5">
+                <span className="text-[10px] font-extrabold uppercase tracking-widest opacity-85">Secure Cashless Checkout</span>
+                <h3 className="text-base font-black mt-0.5 font-sans">
                   {paymentProvider === 'Paystack' ? 'Paystack Gateway' : 'Flutterwave Checkout'}
                 </h3>
               </div>
-              <div className="px-2 py-1 rounded bg-white/10 border border-white/25 text-[10px] font-bold font-mono">
-                SECURE 🔒
+              <div className="px-2.5 py-1 rounded bg-white/10 border border-white/20 text-[9px] font-black font-mono flex items-center gap-1">
+                <span>🔒</span> SECURE
               </div>
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 flex-1 space-y-4">
-              
+            <div className="p-6 flex-1 space-y-4 max-h-[75vh] overflow-y-auto">
+              {paymentError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-semibold rounded-xl animate-fade-in flex items-center gap-2">
+                  <span className="text-sm">⚠️</span>
+                  <span className="flex-1">{paymentError}</span>
+                </div>
+              )}
+
               {paymentStep === 'provider_select' && (
                 <div className="space-y-4">
                   <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl">
-                    <p className="text-xs text-slate-500">Transaction Invoice</p>
-                    <p className="text-sm font-bold text-slate-800 mt-1">Order #{pendingOrder.id}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider font-mono">Transaction Invoice</p>
+                    <p className="text-sm font-bold text-slate-800 mt-0.5">Order #{pendingOrder.id}</p>
                     <p className="text-2xl font-black text-slate-950 mt-1">₦{pendingOrder.total.toLocaleString()}</p>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-500 font-sans">Choose secure payment option:</label>
+                    <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-1">Choose secure payment option:</label>
                     
                     {/* Instant Wallet checkout choice */}
                     {activeCustomer && (
@@ -1196,10 +1406,10 @@ export default function CustomerView({
                         <button
                           onClick={handlePayWithWallet}
                           disabled={isProcessingPayment}
-                          className="w-full py-3 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 hover:border-emerald-300 rounded-xl text-left px-4 transition-all flex items-center justify-between cursor-pointer"
+                          className="w-full py-3 bg-emerald-50/70 hover:bg-emerald-100/70 border border-emerald-150 hover:border-emerald-300 rounded-xl text-left px-4 transition-all flex items-center justify-between cursor-pointer"
                         >
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">🏦</span>
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-xl">🏦</span>
                             <div>
                               <span className="block text-[11px] font-black text-emerald-900 leading-tight font-sans">Instant FoodHub Wallet</span>
                               <span className="block text-[9px] text-emerald-600 font-bold mt-0.5">Available Balance: ₦{activeCustomer.balance.toLocaleString()}</span>
@@ -1213,8 +1423,8 @@ export default function CustomerView({
                         </button>
                       ) : (
                         <div className="w-full py-3 bg-gray-50 border border-dashed border-gray-200 rounded-xl px-4 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="text-lg">🏦</span>
+                          <div className="flex items-center gap-2.5">
+                            <span className="text-xl">🏦</span>
                             <div>
                               <span className="block text-[11px] font-bold text-gray-400 leading-tight font-sans">Instant FoodHub Wallet (Locked)</span>
                               <span className="block text-[9px] text-gray-400 mt-0.5 font-semibold">Activate wallet account to pay with balance</span>
@@ -1237,19 +1447,20 @@ export default function CustomerView({
                     <div className="border-t border-slate-100 my-2 pt-1" />
 
                     <button
-                      onClick={() => setPaymentStep('card_details')}
+                      onClick={() => { setPaymentStep('card_details'); setPaymentError(null); }}
                       disabled={isProcessingPayment}
-                      className="w-full py-2.5 border border-slate-200 hover:border-slate-400 rounded-xl text-xs font-semibold text-slate-700 flex items-center justify-between px-4 transition-colors cursor-pointer"
+                      className="w-full py-3 border border-slate-200 hover:border-slate-400 rounded-xl text-[11px] font-bold text-slate-700 flex items-center justify-between px-4 transition-colors cursor-pointer bg-white"
                     >
-                      <span className="flex items-center gap-2">💳 Pay with Credit / Debit Card</span>
+                      <span className="flex items-center gap-2.5">💳 Pay with Credit / Debit Card</span>
                       <ChevronRight className="w-4 h-4 text-slate-400" />
                     </button>
+                    
                     <button
-                      onClick={simulatePayment}
+                      onClick={handleInitiateBankTransfer}
                       disabled={isProcessingPayment}
-                      className="w-full py-2.5 border border-slate-200 hover:border-slate-400 rounded-xl text-xs font-semibold text-slate-700 flex items-center justify-between px-4 transition-colors cursor-pointer"
+                      className="w-full py-3 border border-slate-200 hover:border-slate-400 rounded-xl text-[11px] font-bold text-slate-700 flex items-center justify-between px-4 transition-colors cursor-pointer bg-white"
                     >
-                      <span className="flex items-center gap-2">⚡ Secure Instant Bank Transfer</span>
+                      <span className="flex items-center gap-2.5">⚡ Secure Instant Bank Transfer</span>
                       <ChevronRight className="w-4 h-4 text-slate-400" />
                     </button>
                   </div>
@@ -1258,63 +1469,239 @@ export default function CustomerView({
 
               {paymentStep === 'card_details' && (
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Card Number</label>
-                    <input
-                      type="text"
-                      placeholder="4000 1234 5678 9010"
-                      value={cardNumber}
-                      onChange={(e) => setCardNumber(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm text-slate-800 outline-none focus:border-slate-300"
-                    />
+                  {/* Visual card preview */}
+                  <div className={`p-4 rounded-2xl text-white relative overflow-hidden shadow-md flex flex-col justify-between h-28 font-mono transition-all duration-300 ${
+                    paymentProvider === 'Paystack' ? 'bg-gradient-to-br from-teal-700 to-emerald-900' : 'bg-gradient-to-br from-indigo-700 to-purple-900'
+                  }`}>
+                    <div className="flex justify-between items-start">
+                      <span className="text-[10px] font-black uppercase opacity-75">Debit Card</span>
+                      <span className="text-base">💳</span>
+                    </div>
+                    <div className="text-sm tracking-widest font-black py-1">
+                      {cardNumber || '•••• •••• •••• ••••'}
+                    </div>
+                    <div className="flex justify-between text-[9px] font-semibold uppercase opacity-80">
+                      <div>
+                        <span className="block text-[6px] opacity-60">Card Holder</span>
+                        <span className="truncate max-w-[120px] block">{activeCustomer?.name || 'Anonymous'}</span>
+                      </div>
+                      <div>
+                        <span className="block text-[6px] opacity-60">Expiry</span>
+                        <span>{cardExpiry || 'MM/YY'}</span>
+                      </div>
+                      <div>
+                        <span className="block text-[6px] opacity-60">CVV</span>
+                        <span>{cardCVV ? '•••' : '000'}</span>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Expiry Date</label>
+                  <div className="space-y-3">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Card Number</label>
                       <input
                         type="text"
-                        placeholder="MM / YY"
-                        value={cardExpiry}
-                        onChange={(e) => setCardExpiry(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm text-slate-800 outline-none focus:border-slate-300"
+                        placeholder="5061 1234 5678 9010"
+                        value={cardNumber}
+                        onChange={(e) => handleCardNumberChange(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 outline-none focus:border-slate-300 font-mono"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">CVV</label>
-                      <input
-                        type="password"
-                        placeholder="123"
-                        maxLength={3}
-                        value={cardCVV}
-                        onChange={(e) => setCardCVV(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-sm text-slate-800 outline-none focus:border-slate-300"
-                      />
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Expiry Date</label>
+                        <input
+                          type="text"
+                          placeholder="MM / YY"
+                          value={cardExpiry}
+                          onChange={(e) => handleCardExpiryChange(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 outline-none focus:border-slate-300 font-mono"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">CVV</label>
+                        <input
+                          type="password"
+                          placeholder="123"
+                          maxLength={3}
+                          value={cardCVV}
+                          onChange={(e) => handleCardCVVChange(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-xs text-slate-800 outline-none focus:border-slate-300 font-mono"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => { setPaymentStep('provider_select'); setPaymentError(null); }}
+                        className="w-1/3 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                      >
+                        Back
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleCardAuthSubmit}
+                        disabled={isProcessingPayment}
+                        className={`w-2/3 py-3 text-white font-black rounded-xl text-xs transition-all shadow-md flex items-center justify-center gap-1 ${
+                          paymentProvider === 'Paystack' 
+                            ? 'bg-[#00A389] hover:bg-[#008A74]' 
+                            : 'bg-[#EF4444] hover:bg-[#D93838]'
+                        }`}
+                      >
+                        {isProcessingPayment ? (
+                          <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          `Pay ₦${pendingOrder.total.toLocaleString()}`
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {paymentStep === 'otp_verify' && (
+                <form onSubmit={handleOtpSubmit} className="space-y-4">
+                  <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl text-center">
+                    <span className="text-2xl">🛡️</span>
+                    <h4 className="text-xs font-black text-slate-800 mt-2">3D Secure Card Authentication</h4>
+                    <p className="text-[10px] text-slate-400 mt-1">We have sent a 4-digit verification code to the mobile device connected to this card.</p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block text-center">Enter Verification OTP</label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="e.g. 1234"
+                      maxLength={4}
+                      value={otpCode}
+                      onChange={(e) => { setOtpCode(e.target.value.replace(/[^0-9]/g, '')); setPaymentError(null); }}
+                      className="w-32 mx-auto bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold tracking-widest text-center text-slate-800 outline-none focus:border-slate-300 font-mono block"
+                    />
+                    <span className="block text-[9px] text-slate-400 text-center font-semibold mt-1">Demo sandbox tip: Use code <strong className="text-slate-600">1234</strong> or any digits.</span>
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => { setPaymentStep('card_details'); setPaymentError(null); }}
+                      className="w-1/3 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isProcessingPayment}
+                      className={`w-2/3 py-3 text-white font-black rounded-xl text-xs transition-all shadow-md flex items-center justify-center gap-1 ${
+                        paymentProvider === 'Paystack' 
+                          ? 'bg-[#00A389] hover:bg-[#008A74]' 
+                          : 'bg-[#EF4444] hover:bg-[#D93838]'
+                      }`}
+                    >
+                      {isProcessingPayment ? (
+                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        'Submit Secure OTP'
+                      )}
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {paymentStep === 'bank_transfer' && (
+                <div className="space-y-4">
+                  <div className="bg-slate-50 border border-slate-100 p-4 rounded-2xl space-y-3">
+                    <div className="flex justify-between items-center text-[11px]">
+                      <span className="font-bold text-slate-500">PROVIDER BANK:</span>
+                      <span className="font-extrabold text-slate-800 font-sans">
+                        {paymentProvider === 'Paystack' ? 'WEMA BANK (via Paystack)' : 'PROVIDUS BANK (via Flutterwave)'}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center border-t border-slate-200/60 pt-2.5">
+                      <div className="space-y-0.5">
+                        <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Account Number</span>
+                        <span className="text-base font-black text-slate-900 tracking-wider font-mono">
+                          {paymentProvider === 'Paystack' ? '9012938475' : '9502938471'}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(paymentProvider === 'Paystack' ? '9012938475' : '9502938471');
+                          setCopiedPaymentAcc(true);
+                          setTimeout(() => setCopiedPaymentAcc(false), 2000);
+                        }}
+                        className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                          copiedPaymentAcc 
+                            ? 'bg-emerald-50 border-emerald-200 text-emerald-600' 
+                            : 'bg-white border-slate-200 text-slate-500 hover:text-slate-800'
+                        }`}
+                      >
+                        {copiedPaymentAcc ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+
+                    <div className="flex justify-between items-center border-t border-slate-200/60 pt-2.5 text-[11px]">
+                      <span className="font-bold text-slate-500">ACCOUNT NAME:</span>
+                      <span className="font-extrabold text-slate-800 font-mono">FoodHub - Order #{pendingOrder.id}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center border-t border-slate-200/60 pt-2.5 text-[11px]">
+                      <span className="font-bold text-slate-500">TOTAL AMOUNT:</span>
+                      <span className="font-black text-rose-600 text-sm">₦{pendingOrder.total.toLocaleString()}</span>
                     </div>
                   </div>
 
-                  <button
-                    onClick={simulatePayment}
-                    disabled={isProcessingPayment}
-                    className={`w-full py-3 text-white font-black rounded-xl text-xs transition-colors mt-2 shadow-md ${
-                      paymentProvider === 'Paystack' 
-                        ? 'bg-teal-600 hover:bg-teal-500' 
-                        : 'bg-indigo-600 hover:bg-indigo-500'
-                    }`}
-                  >
-                    {isProcessingPayment ? 'Processing Transaction...' : `Authorize Payment of ₦${pendingOrder.total.toLocaleString()}`}
-                  </button>
+                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-center space-y-1">
+                    <span className="text-[10px] font-bold text-amber-700 uppercase tracking-widest block font-mono">⚠️ TRANSFER RETRY CLOCK</span>
+                    <p className="text-[11px] font-extrabold text-amber-900">
+                      Unique account expires in: <span className="font-mono text-xs font-black bg-amber-100 px-1.5 py-0.5 rounded text-amber-800">{formatTimer(transferTimer)}</span>
+                    </p>
+                    <p className="text-[9px] text-amber-600 font-semibold leading-tight mt-1">Please perform a bank transfer of exactly ₦{pendingOrder.total.toLocaleString()} before the countdown ends.</p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => { setPaymentStep('provider_select'); setPaymentError(null); }}
+                      className="w-1/3 py-3 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
+                    >
+                      Back
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleBankTransferConfirm}
+                      disabled={isProcessingPayment || transferTimer === 0}
+                      className={`w-2/3 py-3 text-white font-black rounded-xl text-xs transition-all shadow-md flex items-center justify-center gap-1 ${
+                        paymentProvider === 'Paystack' 
+                          ? 'bg-[#00A389] hover:bg-[#008A74]' 
+                          : 'bg-[#EF4444] hover:bg-[#D93838]'
+                      }`}
+                    >
+                      {isProcessingPayment ? (
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          <span className="animate-pulse">Checking logs...</span>
+                        </div>
+                      ) : (
+                        "I've made the transfer"
+                      )}
+                    </button>
+                  </div>
                 </div>
               )}
 
               {paymentStep === 'success' && (
-                <div className="text-center py-6 space-y-4">
-                  <div className="w-14 h-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-2xl mx-auto shadow-inner">
+                <div className="text-center py-6 space-y-4 animate-fade-in">
+                  <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-3xl mx-auto shadow-inner animate-bounce">
                     ✔
                   </div>
                   <div>
                     <h4 className="text-base font-black text-slate-900">Transaction Approved</h4>
-                    <p className="text-xs text-slate-500 mt-1">Payment successfully routed via {paymentProvider}. Your order is now live!</p>
+                    <p className="text-xs text-slate-500 mt-1">Payment successfully verified and settled. Your order #{pendingOrder.id} has been transmitted to {pendingOrder.restaurantName}!</p>
                   </div>
                   <button
                     onClick={() => {
@@ -1322,7 +1709,7 @@ export default function CustomerView({
                       setPendingOrder(null);
                       setSelectedRestaurant(null);
                     }}
-                    className="w-full py-2.5 bg-slate-950 text-white font-bold rounded-xl text-xs hover:bg-slate-800 transition-colors shadow-md"
+                    className="w-full py-3 bg-slate-950 text-white font-bold rounded-xl text-xs hover:bg-slate-800 transition-colors shadow-md animate-pulse"
                   >
                     Track My Order 🏍️
                   </button>
@@ -1338,7 +1725,7 @@ export default function CustomerView({
                   setShowPaymentModal(false);
                   setPendingOrder(null);
                 }}
-                className="py-3.5 text-center text-xs font-semibold text-slate-400 hover:text-rose-500 border-t border-slate-100 transition-colors bg-slate-50 hover:bg-rose-50"
+                className="py-3.5 text-center text-xs font-semibold text-slate-400 hover:text-rose-500 border-t border-slate-100 transition-colors bg-slate-50 hover:bg-rose-50 cursor-pointer"
               >
                 Cancel Transaction
               </button>
