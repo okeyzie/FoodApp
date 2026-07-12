@@ -154,7 +154,19 @@ export default function App() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(orderData),
     });
-    if (!res.ok) throw new Error('Failed to place order');
+    if (!res.ok) {
+      let errorDetail = 'Unknown Server Error';
+      try {
+        const errJson = await res.json();
+        errorDetail = errJson.error || errJson.message || JSON.stringify(errJson);
+      } catch {
+        try {
+          const text = await res.text();
+          if (text) errorDetail = text;
+        } catch {}
+      }
+      throw new Error(errorDetail);
+    }
     const newOrder = await res.json();
     await fetchState();
     return newOrder;

@@ -108,6 +108,7 @@ export default function CustomerView({
   // Payment Simulation Modal state
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [pendingOrder, setPendingOrder] = useState<Order | null>(null);
+  const [showMobileCart, setShowMobileCart] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [paymentStep, setPaymentStep] = useState<'provider_select' | 'card_details' | 'otp_verify' | 'bank_transfer' | 'success'>('provider_select');
@@ -244,7 +245,7 @@ export default function CustomerView({
 
   const getCartSubtotal = () => {
     return cart.reduce((sum, item) => {
-      const addonsSum = item.selectedAddOns.reduce((s, a) => s + a.price, 0);
+      const addonsSum = (item.selectedAddOns || []).reduce((s, a) => s + a.price, 0);
       return sum + (item.price + addonsSum) * item.quantity;
     }, 0);
   };
@@ -430,9 +431,9 @@ export default function CustomerView({
         setPaymentStep('card_details');
         setShowPaymentModal(true);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      alert("Failed to place your order. Please verify your connection to the FoodHub server and try again.");
+      alert(`Failed to place your order: ${e.message || e}`);
     } finally {
       setIsPlacingOrder(false);
     }
@@ -2317,6 +2318,266 @@ export default function CustomerView({
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* MOBILE CART FLOATING FOOTER BUTTON */}
+      {cart.length > 0 && !activeOrder && (
+        <div className="lg:hidden fixed bottom-6 left-4 right-4 z-40 animate-bounce">
+          <button
+            onClick={() => setShowMobileCart(true)}
+            className="w-full bg-[#FF6B35] hover:bg-[#E55A2B] text-white py-3.5 px-5 rounded-2xl shadow-xl flex items-center justify-between text-xs font-black transition-all active:scale-[0.98] cursor-pointer"
+          >
+            <div className="flex items-center gap-2">
+              <span className="bg-white/20 text-white w-5 h-5 rounded-full flex items-center justify-center font-bold text-[10px]">
+                {cart.reduce((sum, item) => sum + item.quantity, 0)}
+              </span>
+              <span>View Your Cart</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span>₦{getCartTotal().toLocaleString()}</span>
+              <ChevronRight className="w-4 h-4 ml-0.5" />
+            </div>
+          </button>
+        </div>
+      )}
+
+      {/* MOBILE CART DRAWER MODAL */}
+      {showMobileCart && !activeOrder && (
+        <div className="lg:hidden fixed inset-0 z-[120] bg-slate-950/80 backdrop-blur-sm flex justify-end animate-fade-in">
+          <div className="w-full max-w-md bg-white h-full flex flex-col p-6 shadow-2xl relative">
+            
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
+              <h3 className="text-sm font-black text-gray-800 flex items-center gap-2">
+                <ShoppingBag className="w-4.5 h-4.5 text-[#FF6B35]" />
+                <span>Your FoodHub Basket</span>
+              </h3>
+              <button
+                onClick={() => setShowMobileCart(false)}
+                className="text-gray-400 hover:text-gray-600 font-bold bg-gray-100 w-8 h-8 rounded-full flex items-center justify-center cursor-pointer transition-colors"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Scrollable Cart Content */}
+            <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+              {cart.length === 0 ? (
+                <div className="text-center py-16 text-gray-400 flex flex-col items-center justify-center">
+                  <ShoppingBag className="w-12 h-12 stroke-[1.5] text-gray-300 mb-3" />
+                  <p className="text-xs font-bold text-gray-500">Your basket is empty</p>
+                  <p className="text-[10px] mt-1 text-gray-400">Add delicious items to get started!</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Cart Items List */}
+                  <div className="space-y-3.5">
+                    {cart.map((item) => {
+                      const singleItemTotal = item.price + (item.selectedAddOns || []).reduce((sum, ad) => sum + ad.price, 0);
+                      const itemLineTotal = singleItemTotal * item.quantity;
+                      return (
+                        <div key={item.id} className="flex justify-between items-start text-xs border-b border-gray-100 pb-3.5">
+                          <div className="max-w-[65%] space-y-0.5">
+                            <h4 className="font-bold text-gray-700">{item.name}</h4>
+                            {item.selectedAddOns && item.selectedAddOns.length > 0 && (
+                              <div className="text-[10px] text-gray-400 font-semibold leading-tight">
+                                + {item.selectedAddOns.map(a => `${a.name} (+₦${a.price.toLocaleString()})`).join(', ')}
+                              </div>
+                            )}
+                            {item.specialInstructions && (
+                              <div className="text-[10px] text-gray-500 italic font-medium bg-slate-50 border border-slate-100 rounded px-1.5 py-0.5 mt-1 inline-block">
+                                "{item.specialInstructions}"
+                              </div>
+                            )}
+                            <div className="flex items-center gap-1.5 mt-1">
+                              <span className="text-[10px] text-[#FF6B35] font-extrabold font-mono">₦{singleItemTotal.toLocaleString()}</span>
+                              {item.quantity > 1 && (
+                                <span className="text-[9px] text-gray-400 font-bold font-mono">(₦{itemLineTotal.toLocaleString()} total)</span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleRemoveFromCart(item.id)}
+                              className="p-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-600 cursor-pointer"
+                            >
+                              <Minus className="w-3 h-3" />
+                            </button>
+                            <span className="text-xs font-bold text-gray-700 px-1">{item.quantity}</span>
+                            <button
+                              onClick={() => handleIncrementCartItem(item.id)}
+                              className="p-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-600 cursor-pointer"
+                            >
+                              <Plus className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Checkout inputs (Destination, Tip, Payment) */}
+                  <div className="space-y-4 pt-1">
+                    {/* Destination */}
+                    <div className="bg-gray-50 border border-gray-100 p-3.5 rounded-2xl space-y-3">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-xs">📍</span>
+                        <span className="text-[10px] font-black text-gray-500 uppercase tracking-wider font-mono">Delivery Destination</span>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block">Destination Address</label>
+                        <input
+                          type="text"
+                          placeholder="Enter your delivery address in Lagos..."
+                          value={deliveryAddress}
+                          onChange={(e) => setDeliveryAddress(e.target.value)}
+                          className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-[11px] font-semibold text-gray-700 outline-none focus:border-emerald-500 shadow-3xs"
+                        />
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-gray-400 uppercase tracking-wide block">Rider Instructions (Optional)</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Ring bell twice, leave with security..."
+                          value={deliveryNotes}
+                          onChange={(e) => setDeliveryNotes(e.target.value)}
+                          className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-[11px] font-semibold text-gray-700 outline-none focus:border-emerald-500 shadow-3xs"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Tip Rider */}
+                    <div className="flex items-center justify-between bg-gray-50 border border-gray-100 p-2.5 rounded-xl text-xs">
+                      <span className="text-[10px] font-bold text-gray-500">🏍️ Tip Delivery Rider</span>
+                      <div className="flex gap-1.5">
+                        {[0, 500, 1000].map((tip) => (
+                          <button
+                            key={tip}
+                            onClick={() => setRiderTip(tip)}
+                            className={`px-2.5 py-1 text-[10px] font-black rounded-md border transition-all ${
+                              riderTip === tip
+                                ? 'bg-[#FF6B35] text-white border-[#FF6B35]/40'
+                                : 'bg-white border-gray-200 text-gray-500 hover:text-gray-800'
+                            }`}
+                          >
+                            {tip === 0 ? 'None' : `₦${tip}`}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Payment Gateways Selection */}
+                    <div className="bg-gray-50 border border-gray-100 p-3.5 rounded-2xl space-y-2">
+                      <span className="text-[10px] font-black text-gray-500 block uppercase tracking-wider font-mono">💳 Checkout Payment Option</span>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => { setPaymentMethod('Card'); setPaymentProvider('Paystack'); }}
+                          className={`px-2 py-2.5 text-[10px] font-black rounded-xl border text-center transition-all cursor-pointer ${
+                            paymentProvider === 'Paystack' && paymentMethod === 'Card'
+                              ? 'bg-teal-600 text-white border-teal-600 shadow-sm'
+                              : 'bg-white border-gray-200 text-gray-600'
+                          }`}
+                        >
+                          Paystack
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setPaymentMethod('Card'); setPaymentProvider('Flutterwave'); }}
+                          className={`px-2 py-2.5 text-[10px] font-black rounded-xl border text-center transition-all cursor-pointer ${
+                            paymentProvider === 'Flutterwave' && paymentMethod === 'Card'
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                              : 'bg-white border-gray-200 text-gray-600'
+                          }`}
+                        >
+                          Flutterwave
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setPaymentMethod('Wallet'); setPaymentProvider('Paystack'); }}
+                          className={`px-2 py-2.5 text-[10px] font-black rounded-xl border text-center transition-all cursor-pointer ${
+                            paymentMethod === 'Wallet'
+                              ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm'
+                              : 'bg-white border-gray-200 text-gray-600'
+                          }`}
+                        >
+                          FoodHub Wallet
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setPaymentMethod('Cash on Delivery'); setPaymentProvider('COD'); }}
+                          className={`px-2 py-2.5 text-[10px] font-black rounded-xl border text-center transition-all cursor-pointer ${
+                            paymentMethod === 'Cash on Delivery'
+                              ? 'bg-amber-600 text-white border-amber-600 shadow-sm'
+                              : 'bg-white border-gray-200 text-gray-600'
+                          }`}
+                        >
+                          Cash on Delivery
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Cost breakdown */}
+                    <div className="space-y-1.5 text-[11px] text-gray-500 border-t border-gray-150 pt-3">
+                      <div className="flex justify-between">
+                        <span>Subtotal</span>
+                        <span>₦{getCartSubtotal().toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>VAT (7.5%)</span>
+                        <span>₦{getCartTax().toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Delivery Fee</span>
+                        <span>₦{getDeliveryFee().toLocaleString()}</span>
+                      </div>
+                      {riderTip > 0 && (
+                        <div className="flex justify-between text-emerald-600 font-medium">
+                          <span>Rider Tip</span>
+                          <span>₦{riderTip.toLocaleString()}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between text-xs font-black text-gray-800 border-t border-gray-100 pt-2.5">
+                        <span>Total Invoice</span>
+                        <span className="text-[#FF6B35]">₦{getCartTotal().toLocaleString()}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Drawer Actions */}
+            {cart.length > 0 && (
+              <div className="border-t border-gray-100 pt-4 mt-2">
+                <button
+                  onClick={async () => {
+                    await handleCheckout();
+                    // Close only after attempting checkout
+                    setShowMobileCart(false);
+                  }}
+                  disabled={isPlacingOrder}
+                  className="w-full py-3.5 bg-[#FF6B35] text-white font-black rounded-2xl text-xs hover:bg-[#E55A2B] transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isPlacingOrder ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Transmitting Order...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard className="w-4.5 h-4.5" />
+                      <span>Place Food Order (₦{getCartTotal().toLocaleString()})</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
+
           </div>
         </div>
       )}
