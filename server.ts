@@ -429,6 +429,15 @@ function loadDatabase(): AppState {
     try {
       const raw = fs.readFileSync(DB_FILE, "utf-8");
       const loaded = JSON.parse(raw);
+      
+      // Ensure all fields are initialized properly to avoid undefined crashes
+      if (!loaded.restaurants || !Array.isArray(loaded.restaurants)) loaded.restaurants = initialRestaurants;
+      if (!loaded.menuItems || !Array.isArray(loaded.menuItems)) loaded.menuItems = initialMenuItems;
+      if (!loaded.riders || !Array.isArray(loaded.riders)) loaded.riders = initialRiders;
+      if (!loaded.orders || !Array.isArray(loaded.orders)) loaded.orders = [];
+      if (!loaded.messages || !Array.isArray(loaded.messages)) loaded.messages = [];
+      if (!loaded.reviews || !Array.isArray(loaded.reviews)) loaded.reviews = initialReviews;
+
       if (!loaded.customers || !Array.isArray(loaded.customers)) {
         loaded.customers = initialCustomers;
       } else {
@@ -919,42 +928,53 @@ app.delete("/api/menu/:id", (req, res) => {
 
 // ORDER APIS & PAYMENTS
 app.post("/api/orders", (req, res) => {
-  const orderId = `ord-${Math.floor(100000 + Math.random() * 900000)}`;
-  const subtotal = req.body.items.reduce((sum: number, item: any) => {
-    const itemAddons = item.selectedAddOns?.reduce((s: number, a: any) => s + a.price, 0) || 0;
-    return sum + (item.price + itemAddons) * item.quantity;
-  }, 0);
-  const tax = Math.round(subtotal * 0.075); // 7.5% VAT
-  const deliveryFee = req.body.pickupOption === "pickup" ? 0 : (req.body.deliveryFee || 500);
-  const riderTip = req.body.riderTip || 0;
-  const total = subtotal + tax + deliveryFee + riderTip;
+  try {
+    const orderId = `ord-${Math.floor(100000 + Math.random() * 900000)}`;
+    const items = req.body.items || [];
+    
+    const subtotal = items.reduce((sum: number, item: any) => {
+      const itemAddons = item.selectedAddOns?.reduce((s: number, a: any) => s + a.price, 0) || 0;
+      return sum + ((item.price || 0) + itemAddons) * (item.quantity || 1);
+    }, 0);
+    const tax = Math.round(subtotal * 0.075); // 7.5% VAT
+    const deliveryFee = req.body.pickupOption === "pickup" ? 0 : (req.body.deliveryFee || 500);
+    const riderTip = req.body.riderTip || 0;
+    const total = subtotal + tax + deliveryFee + riderTip;
 
-  const newOrder: Order = {
-    id: orderId,
-    customerId: req.body.customerId || "customer-1",
-    customerName: req.body.customerName || "Simulated User",
-    customerPhone: req.body.customerPhone || "+234 800 000 0000",
-    restaurantId: req.body.restaurantId,
-    restaurantName: req.body.restaurantName,
-    items: req.body.items,
-    subtotal,
-    tax,
-    deliveryFee,
-    riderTip,
-    total,
-    status: "Order Received",
-    paymentMethod: req.body.paymentMethod || "Card",
-    paymentProvider: req.body.paymentProvider || "Paystack",
-    paymentStatus: req.body.paymentMethod === "Cash on Delivery" ? "Pending" : "Pending", // Set as pending until simulated webhook/completion API is called
-    deliveryAddress: req.body.deliveryAddress || "Home Address",
-    deliveryNotes: req.body.deliveryNotes || "",
-    pickupOption: req.body.pickupOption || "delivery",
-    createdAt: new Date().toISOString()
-  };
+    const newOrder: Order = {
+      id: orderId,
+      customerId: req.body.customerId || "customer-1",
+      customerName: req.body.customerName || "Simulated User",
+      customerPhone: req.body.customerPhone || "+234 800 000 0000",
+      restaurantId: req.body.restaurantId,
+      restaurantName: req.body.restaurantName,
+      items: items,
+      subtotal,
+      tax,
+      deliveryFee,
+      riderTip,
+      total,
+      status: "Order Received",
+      paymentMethod: req.body.paymentMethod || "Card",
+      paymentProvider: req.body.paymentProvider || "Paystack",
+      paymentStatus: req.body.paymentMethod === "Cash on Delivery" ? "Pending" : "Pending", // Set as pending until simulated webhook/completion API is called
+      deliveryAddress: req.body.deliveryAddress || "Home Address",
+      deliveryNotes: req.body.deliveryNotes || "",
+      pickupOption: req.body.pickupOption || "delivery",
+      createdAt: new Date().toISOString()
+    };
 
-  db.orders.push(newOrder);
-  saveDatabase(db);
-  res.status(201).json(newOrder);
+    if (!db.orders) {
+      db.orders = [];
+    }
+
+    db.orders.push(newOrder);
+    saveDatabase(db);
+    res.status(201).json(newOrder);
+  } catch (error: any) {
+    console.error("Error creating order:", error);
+    res.status(500).json({ error: "Failed to place order: " + (error.message || error) });
+  }
 });
 
 // Call this to simulate successful Paystack/Flutterwave payments
