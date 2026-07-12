@@ -380,6 +380,41 @@ const initialAdmins: AdminAccount[] = [
 let mongoClient: any = null;
 let mongoDbConnected = false;
 
+function mergeCollections<T extends { id: string }>(local: T[] | undefined, remote: T[] | undefined, defaults: T[] = []): T[] {
+  const mergedMap = new Map<string, T>();
+  
+  // 1. Populate with default values first
+  (defaults || []).forEach(item => {
+    if (item && item.id) mergedMap.set(item.id, item);
+  });
+
+  // 2. Add local values (loaded from db_store.json)
+  (local || []).forEach(item => {
+    if (item && item.id) {
+      const existing = mergedMap.get(item.id);
+      if (existing) {
+        mergedMap.set(item.id, { ...existing, ...item });
+      } else {
+        mergedMap.set(item.id, item);
+      }
+    }
+  });
+
+  // 3. Add remote values (loaded from MongoDB)
+  (remote || []).forEach(item => {
+    if (item && item.id) {
+      const existing = mergedMap.get(item.id);
+      if (existing) {
+        mergedMap.set(item.id, { ...existing, ...item });
+      } else {
+        mergedMap.set(item.id, item);
+      }
+    }
+  });
+
+  return Array.from(mergedMap.values());
+}
+
 async function initMongoDB() {
   const uri = process.env.MONGODB_URI;
   if (!uri) {
@@ -397,19 +432,23 @@ async function initMongoDB() {
     const stateCollection = dbInstance.collection("app_state");
     const doc = await stateCollection.findOne({ _id: "current_state" });
     if (doc) {
-      console.log("Found existing AppState document in MongoDB. Synchronizing local memory state...");
+      console.log("Found existing AppState document in MongoDB. Synchronizing and merging local memory state...");
       const { _id, ...savedState } = doc;
+      
+      // Merge local baseline with remote saved state by ID to prevent data overwriting!
       db = {
-        restaurants: savedState.restaurants || initialRestaurants,
-        menuItems: savedState.menuItems || initialMenuItems,
-        riders: savedState.riders || initialRiders,
-        orders: savedState.orders || [],
-        messages: savedState.messages || [],
-        reviews: savedState.reviews || initialReviews,
-        customers: savedState.customers || initialCustomers,
-        admins: savedState.admins || initialAdmins
+        restaurants: mergeCollections(db.restaurants, savedState.restaurants, initialRestaurants),
+        menuItems: mergeCollections(db.menuItems, savedState.menuItems, initialMenuItems),
+        riders: mergeCollections(db.riders, savedState.riders, initialRiders),
+        orders: mergeCollections(db.orders, savedState.orders, []),
+        messages: mergeCollections(db.messages, savedState.messages, []),
+        reviews: mergeCollections(db.reviews, savedState.reviews, initialReviews),
+        customers: mergeCollections(db.customers, savedState.customers, initialCustomers),
+        admins: mergeCollections(db.admins, savedState.admins, initialAdmins)
       };
-      console.log("Memory state updated successfully from MongoDB!");
+      
+      console.log("Memory state merged successfully with MongoDB! Propagating merged state back to both storage systems...");
+      saveDatabase(db);
     } else {
       console.log("No existing state found in MongoDB. Initializing MongoDB collection with current baseline data...");
       await stateCollection.updateOne(
