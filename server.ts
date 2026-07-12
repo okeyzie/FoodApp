@@ -379,6 +379,8 @@ const initialAdmins: AdminAccount[] = [
 
 let mongoClient: any = null;
 let mongoDbConnected = false;
+let pendingSaves: Promise<any>[] = [];
+let mongoInitPromise: Promise<void> | null = null;
 
 function mergeCollections<T extends { id: string }>(local: T[] | undefined, remote: T[] | undefined, defaults: T[] = []): T[] {
   const mergedMap = new Map<string, T>();
@@ -523,13 +525,17 @@ function saveDatabase(state: AppState) {
     try {
       const dbInstance = mongoClient.db();
       const stateCollection = dbInstance.collection("app_state");
-      stateCollection.updateOne(
+      const savePromise = stateCollection.updateOne(
         { _id: "current_state" },
         { $set: JSON.parse(JSON.stringify(state)) },
         { upsert: true }
-      ).catch((err: any) => {
+      ).then(() => {
+        pendingSaves = pendingSaves.filter(p => p !== savePromise);
+      }).catch((err: any) => {
         console.error("Failed to asynchronously save state update to MongoDB:", err);
+        pendingSaves = pendingSaves.filter(p => p !== savePromise);
       });
+      pendingSaves.push(savePromise);
     } catch (mongoErr) {
       console.error("Failed to enqueue state update to MongoDB:", mongoErr);
     }
@@ -776,6 +782,61 @@ let db = loadDatabase();
 // Middleware
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
+
+// Custom middleware to wait for database connection and pending writes before returning response
+app.use(async (req, res, next) => {
+  if (mongoInitPromise) {
+    try {
+      await mongoInitPromise;
+    } catch (e) {
+      console.error("Error waiting for mongoInitPromise:", e);
+    }
+  }
+
+  // Hook response functions to wait for any pending database saves
+  const originalJson = res.json;
+  const originalSend = res.send;
+  const originalEnd = res.end;
+
+  const waitForSaves = async () => {
+    while (pendingSaves.length > 0) {
+      const currentSaves = [...pendingSaves];
+      await Promise.all(currentSaves);
+    }
+  };
+
+  res.json = function (...args: any[]) {
+    waitForSaves().then(() => {
+      originalJson.apply(res, args);
+    }).catch((err) => {
+      console.error("Error in waitForSaves inside res.json:", err);
+      originalJson.apply(res, args);
+    });
+    return res;
+  } as any;
+
+  res.send = function (...args: any[]) {
+    waitForSaves().then(() => {
+      originalSend.apply(res, args);
+    }).catch((err) => {
+      console.error("Error in waitForSaves inside res.send:", err);
+      originalSend.apply(res, args);
+    });
+    return res;
+  } as any;
+
+  res.end = function (...args: any[]) {
+    waitForSaves().then(() => {
+      originalEnd.apply(res, args);
+    }).catch((err) => {
+      console.error("Error in waitForSaves inside res.end:", err);
+      originalEnd.apply(res, args);
+    });
+    return res;
+  } as any;
+
+  next();
+});
 
 // Local in-memory cache of uploaded images for offline/local fallback
 const localImagesCache = new Map<string, { data: string; contentType: string }>();
@@ -1868,7 +1929,8 @@ app.get(["/auth/callback", "/auth/callback/"], async (req, res) => {
 // Start server
 async function startServer() {
   // Initialize MongoDB connection if MONGODB_URI is provided
-  await initMongoDB();
+  mongoInitPromise = initMongoDB();
+  await mongoInitPromise;
 
   // Vite integration
   if (process.env.NODE_ENV !== "production") {
