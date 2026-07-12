@@ -104,6 +104,21 @@ export default function CustomerView({
   
   // Chat state
   const [newMessageText, setNewMessageText] = useState('');
+  const [customerTab, setCustomerTab] = useState<'home' | 'tracking'>('home');
+
+  // Auto switch tab to tracking when there's an active order newly detected
+  const lastActiveOrderIdRef = React.useRef<string | null>(null);
+  React.useEffect(() => {
+    if (activeOrder) {
+      if (lastActiveOrderIdRef.current !== activeOrder.id) {
+        setCustomerTab('tracking');
+        lastActiveOrderIdRef.current = activeOrder.id;
+      }
+    } else {
+      setCustomerTab('home');
+      lastActiveOrderIdRef.current = null;
+    }
+  }, [activeOrder]);
   
   // Payment Simulation Modal state
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -655,8 +670,52 @@ export default function CustomerView({
           </div>
         </div>
       </div>
+
+      {/* Tab Navigation for Active Orders / Browsing */}
+      {activeOrder && (
+        <div className="bg-[#0F4C3A]/5 border-b border-[#0F4C3A]/10 px-4 py-2.5">
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div className="flex gap-2 w-full sm:w-auto">
+              <button
+                onClick={() => setCustomerTab('home')}
+                className={`flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer border ${
+                  customerTab === 'home'
+                    ? 'bg-emerald-800 text-white border-emerald-800 shadow-xs'
+                    : 'bg-white text-gray-600 hover:text-gray-800 border-gray-200'
+                }`}
+              >
+                <ShoppingBag className="w-3.5 h-3.5" />
+                <span>Browse Kitchens & Menu</span>
+              </button>
+              <button
+                onClick={() => setCustomerTab('tracking')}
+                className={`flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 relative cursor-pointer border ${
+                  customerTab === 'tracking'
+                    ? 'bg-[#FF6B35] text-white border-[#FF6B35] shadow-xs'
+                    : 'bg-white text-gray-600 hover:text-gray-800 border-gray-200'
+                }`}
+              >
+                <div className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </div>
+                <span>Track Active Order</span>
+              </button>
+            </div>
+            
+            {/* Quick mini-status indicator */}
+            <div className="flex items-center gap-2 text-xs font-bold text-gray-500 self-start sm:self-auto bg-white/60 px-3 py-1.5 rounded-xl border border-gray-200/50">
+              <span>Current Delivery:</span>
+              <span className="bg-emerald-50 text-emerald-800 px-2.5 py-0.5 rounded-lg border border-emerald-100 uppercase tracking-wide text-[10px] font-black animate-pulse">
+                {activeOrder.status}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Search & Promo Hero banner */}
-      {!selectedRestaurant && !activeOrder && (
+      {!selectedRestaurant && customerTab === 'home' && (
         <div className="bg-[#0F4C3A]/5 border-b border-emerald-950/5 px-4 py-8">
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row gap-6 items-center justify-between">
             <div className="max-w-xl text-center md:text-left">
@@ -691,7 +750,7 @@ export default function CustomerView({
       <div className="max-w-7xl mx-auto px-4 mt-6">
         
         {/* ACTIVE ORDER LIVE TRACKING VIEW */}
-        {activeOrder && (
+        {activeOrder && customerTab === 'tracking' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Col: Order Tracking Info */}
             <div className="lg:col-span-2 space-y-6">
@@ -937,7 +996,7 @@ export default function CustomerView({
         )}
 
         {/* RESTAURANT SELECTION OR MEAL SELECTION VIEW */}
-        {!activeOrder && (
+        {customerTab === 'home' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
             {/* Left/Middle Content: Restaurants or Menu list */}
@@ -2323,7 +2382,7 @@ export default function CustomerView({
       )}
 
       {/* MOBILE CART FLOATING FOOTER BUTTON */}
-      {cart.length > 0 && !activeOrder && (
+      {cart.length > 0 && customerTab === 'home' && (
         <div className="lg:hidden fixed bottom-6 left-4 right-4 z-40 animate-bounce">
           <button
             onClick={() => setShowMobileCart(true)}
@@ -2344,7 +2403,7 @@ export default function CustomerView({
       )}
 
       {/* MOBILE CART DRAWER MODAL */}
-      {showMobileCart && !activeOrder && (
+      {showMobileCart && customerTab === 'home' && (
         <div className="lg:hidden fixed inset-0 z-[120] bg-slate-950/80 backdrop-blur-sm flex justify-end animate-fade-in">
           <div className="w-full max-w-md bg-white h-full flex flex-col p-6 shadow-2xl relative">
             
